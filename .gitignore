@@ -1,0 +1,15 @@
+**~
+_*/
+/test/results/
+**.egg-info/
+.DS_Store
+.idea
+.loadpath
+.project
+.*/
+*.pdf
+*.pyc
+*.tar*
+**log
+*.js
+*.css

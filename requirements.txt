@@ -1,0 +1,12 @@
+Django==1.5.5
+Markdown==2.3.1
+bson==0.3.3
+django-filter==0.7
+django_mongodb_engine==0.5.1
+django-multiselectfield==0.1.1
+django-registration==1.0
+djangorestframework==2.3.12
+djangotoolbox==1.6.2
+futures==2.1.6
+pymongo==2.4.1
+wsgiref==0.1.2
