@@ -1,5 +1,10 @@
 from rest_framework import serializers
-from .models import (Subject, SubjectDetail)
+from .models import (User, Subject, SubjectDetail)
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
 
 
 class SubjectSerializer(serializers.ModelSerializer):

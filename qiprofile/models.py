@@ -23,6 +23,18 @@ from djangotoolbox.fields import (ListField, EmbeddedModelField)
 from . import (choices, validators)
 
 
+class User(models.Model):
+    """
+    The application user.
+    """
+
+    email = models.CharField(max_length=200)
+    first_time = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.email
+
+
 class Subject(models.Model):
     """
     The QIN patient.

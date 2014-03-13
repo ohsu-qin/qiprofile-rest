@@ -2,12 +2,17 @@ import os
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import (generics, mixins, viewsets)
 import bson
-from .models import (Subject, SubjectDetail)
-from .serializers import (SubjectSerializer, SubjectDetailSerializer)
+from .models import (User, Subject, SubjectDetail)
+from .serializers import (UserSerializer, SubjectSerializer, SubjectDetailSerializer)
 
 
 class InvalidFilter(Exception):
     pass
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    model = User
+    serializer_class = UserSerializer
 
 
 class SubjectViewSet(viewsets.ModelViewSet):
@@ -17,9 +22,16 @@ class SubjectViewSet(viewsets.ModelViewSet):
     
     @csrf_exempt
     def dispatch(self, request, *args, **kwargs):
-        # The pk argument is either a Mongodb ID or a subject number.
-        # If the pk is a subject number, then the request must include
-        # a project and collection.
+        """
+        Overrides the superclass ``dispatch`` method to support a subject
+        number keyword argument. The ``pk`` argument is either a Mongodb ID
+        or a subject number. If the key is a subject number, then the lookup
+        field is the subject number and the request must include a project
+        and collection.
+        
+        @raise :class:`InvalidFilter` if the key argument is a subject number
+            and the request does not include a project and collection
+        """
         if 'pk' in kwargs:
             try:
                 bson.objectid.ObjectId(kwargs['pk'])
@@ -27,13 +39,13 @@ class SubjectViewSet(viewsets.ModelViewSet):
             except bson.objectid.InvalidId:
                 sbj_nbr = kwargs['number'] = kwargs.pop('pk')
                 self.lookup_field = 'number'
-                for field in ['project', 'collection']
-                if field not in request.GET:
-                    raise InvalidFilter("The subject %s request does not"
-                                        " include a %s" % (sbj_nbr, field))
+                for field in ['project', 'collection']:
+                    if field not in request.GET:
+                        raise InvalidFilter("The subject %s request does not"
+                                            " include a %s" % (sbj_nbr, field))
 
         return super(SubjectViewSet, self).dispatch(request, *args, **kwargs)
-        
+
 
 class SubjectDetailViewSet(mixins.RetrieveModelMixin, mixins.UpdateModelMixin,
                            viewsets.GenericViewSet):
