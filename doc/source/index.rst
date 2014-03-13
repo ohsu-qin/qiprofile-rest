@@ -69,13 +69,3 @@ Run the following command to dispays the server commands and options::
 .. _qiprofile-rest: http://quip1.ohsu.edu:8080/qiprofile-rest
 
 .. _qiprofile-rest repository: http://quip1.ohsu.edu:6060/qiprofile-rest
-
-
-.. toctree::
-  :hidden:
-
-  api/index
-  api/helpers
-  api/interfaces
-  api/pipeline
-  api/staging
