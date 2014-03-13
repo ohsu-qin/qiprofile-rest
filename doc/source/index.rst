@@ -1,31 +1,19 @@
 .. _index:
 
-=======================================
-qiprofile: Quantitative Imaging Profile
-=======================================
+================================================
+qiprofile: Quantitative Imaging Profile REST API
+================================================
 
 ********
 Synopsis
 ********
-The Quantitative Imaging Profile web application displays imaging and clinical
-data for the `OHSU QIN Sharepoint`_ study.
+The Quantitative Imaging Profile REST API serves data for the
+`Quantitative Imaging Profile`_ web application.
 
-:API: http://quip1.ohsu.edu:8080/qiprofile/api
+:API: http://quip1.ohsu.edu:8080/qiprofile-rest/api
 
-:Git: git\@quip1.ohsu.edu:qiprofile
-(`Browse <http://quip1.ohsu.edu:6060/qiprofile>`__)
-
-
-************
-Feature List
-************
-1. OHSU QIN patient MR visualization.
-
-2. ROI capture.
-
-3. Clincial annotation editor.
-
-4. qipipe_ pharmokinetic modeling result display.
+:Git: git\@quip1.ohsu.edu:qiprofile-rest
+(`Browse <http://quip1.ohsu.edu:6060/qiprofile-rest>`__)
 
 
 ************
@@ -33,19 +21,19 @@ Installation
 ************
 1. Install Git_ on your workstation.
 
-2. Contact the qiprofile `OHSU QIN Git administrator`_ to get permission
-   to access the qipipe Git repository.
+2. Contact the `OHSU QIN Git administrator`_ to obtain permission
+   to access the ``qiprofile-rest`` Git repository.
 
-3. Clone the `qiprofile repository`_::
+3. Clone the `qiprofile-rest repository`_::
 
        cd ~/workspace
-       git clone git@quip1:qiprofile
+       git clone git@quip1:qiprofile-rest
    
 4. Install the Python_ pip_ package on your workstation.
 
-5. Install the qiprofile package::
+5. Install the ``qiprofile-rest`` package::
 
-       cd ~/workspace/qiprofile
+       cd ~/workspace/qiprofile-rest
        pip install -e .
 
 
@@ -54,7 +42,7 @@ Usage
 *****
 Run the following command to dispays the server commands and options::
 
-     qiprofile --help
+     ./manage.py --help
 
 ---------
 
@@ -62,26 +50,25 @@ Run the following command to dispays the server commands and options::
 
   Copyright (C) 2014 Oregon Health & Science University `Knight Cancer Institute`_.
   All rights reserved.
-  ``qiprofile`` is confidential and may not be distributed in any form without authorization.
+  ``qiprofile-rest`` is confidential and may not be distributed in any form without
+  authorization.
 
 
 .. Targets:
 
-.. _Git: http://git-scm.com
+.. _Git: http://www.git-scm.com
 
 .. _Knight Cancer Institute: http://www.ohsu.edu/xd/health/services/cancer
 
 .. _OHSU QIN Git administrator: loneyf@ohsu.edu
 
-.. _OHSU QIN Sharepoint: https://bridge.ohsu.edu/research/knight/projects/qin/SitePages/Home.aspx
-
 .. _pip: https://pypi.python.org/pypi/pip
 
 .. _Python: http://www.python.org
 
-.. _qipipe: http://quip1.ohsu.edu:8080/qipipe
+.. _qiprofile-rest: http://quip1.ohsu.edu:8080/qiprofile-rest
 
-.. _qiprofile repository: http://quip1.ohsu.edu:6060/qiprofile
+.. _qiprofile-rest repository: http://quip1.ohsu.edu:6060/qiprofile-rest
 
 
 .. toctree::
