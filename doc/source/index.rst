@@ -13,7 +13,7 @@ The Quantitative Imaging Profile REST API serves data for the
 :API: http://quip1.ohsu.edu:8080/qiprofile-rest/api
 
 :Git: git\@quip1.ohsu.edu:qiprofile-rest
-(`Browse <http://quip1.ohsu.edu:6060/qiprofile-rest>`__)
+      (`Browse <http://quip1.ohsu.edu:6060/qiprofile-rest>`__)
 
 
 ************
