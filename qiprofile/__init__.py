@@ -12,5 +12,3 @@ is incremented when there is a backward-compatible refactoring
 or bug fix. All major, minor and patch version numbers begin at
 1.
 """
-
-
