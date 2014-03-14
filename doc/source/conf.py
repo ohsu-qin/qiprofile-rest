@@ -10,7 +10,7 @@ project = u'qiprofile_rest'
 copyright = u'2014, OHSU Knight Cancer Institute'
 version = qiprofile.__version__
 pygments_style = 'sphinx'
-html_theme = 'theme'
+html_theme = 'qiprofile_rest_theme'
 html_theme_path = ['.']
 html_theme_options = dict(linkcolor='DarkSkyBlue', visitedlinkcolor='Navy')
 htmlhelp_basename = 'qiprofilerestdoc'
