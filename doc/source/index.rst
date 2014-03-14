@@ -1,14 +1,14 @@
 .. _index:
 
-================================================
-qiprofile: Quantitative Imaging Profile REST API
-================================================
+=====================================================
+qiprofile-rest: Quantitative Imaging Profile REST API
+=====================================================
 
 ********
 Synopsis
 ********
 The Quantitative Imaging Profile REST API serves data for the
-`Quantitative Imaging Profile`_ web application.
+Quantitative Imaging Profile web application.
 
 :API: http://quip1.ohsu.edu:8080/qiprofile-rest/api
 
@@ -65,6 +65,8 @@ Run the following command to dispays the server commands and options::
 .. _pip: https://pypi.python.org/pypi/pip
 
 .. _Python: http://www.python.org
+
+.. _OHSU QIN Sharepoint: https://bridge.ohsu.edu/research/knight/projects/qin/SitePages/Home.aspx
 
 .. _qiprofile-rest: http://quip1.ohsu.edu:8080/qiprofile-rest
 
