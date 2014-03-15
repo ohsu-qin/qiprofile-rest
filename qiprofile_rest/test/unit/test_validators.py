@@ -1,6 +1,6 @@
 from nose.tools import assert_is_none, assert_raises
 from django.core.exceptions import ValidationError
-from qiprofile import validators
+from qiprofile_rest import validators
 
 class TestValidators(object):
     def test_tnm_size_validator(self):

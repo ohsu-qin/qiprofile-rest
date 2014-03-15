@@ -1,7 +1,7 @@
 """The Imaging Profile REST API django application."""
 from pkg_resources import get_distribution
 
-__version__ = get_distribution('qiprofile').version
+__version__ = get_distribution('qiprofile-rest').version
 """
 The one-based major.minor.patch version.
 The version numbering scheme loosely follows http://semver.org/.

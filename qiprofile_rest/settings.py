@@ -1,5 +1,5 @@
 """
-Django settings for qiprofile project.
+Django settings for qiprofile_rest project.
 
 For more information on this file, see
 https://docs.djangoproject.com/en/1.6/topics/settings/
@@ -31,7 +31,7 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'qiprofile',
+    'qiprofile_rest',
     # Uncomment the next line to enable manage.py test utilities.
     #'django_jasmine',
     # Uncomment the next line to enable manage.py development utilities.
@@ -155,10 +155,10 @@ TEMPLATE_LOADERS = (
     #'django.template.loaders.eggs.Loader',
 )
 
-ROOT_URLCONF = 'qiprofile.urls'
+ROOT_URLCONF = 'qiprofile_rest.urls'
 
 # Python dotted path to the WSGI application used by Django's runserver.
-WSGI_APPLICATION = 'qiprofile.wsgi.application'
+WSGI_APPLICATION = 'qiprofile_rest.wsgi.application'
 
 # The additional project-level template directories.
 TEMPLATE_DIRS = (

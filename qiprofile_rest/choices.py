@@ -31,11 +31,11 @@ def range_choices(start, stop, roman=False):
      
     Example:
 
-    >>> from qiprofile import choices
+    >>> from qiprofile_rest import choices
     >>> choices.range_choices(1, 4)
     [('1', 1), ('2', 2), ('3', 3)]
 
-    >>> from qiprofile import choices
+    >>> from qiprofile_rest import choices
     >>> choices.range_choices(1, 5, roman=True)
     [('I', 1), ('II', 2), ('III', 3), ('IV', 4)]
     

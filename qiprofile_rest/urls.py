@@ -22,8 +22,8 @@ from .routers import router
 # )
 
 urlpatterns = patterns('',
-    # The qiprofile URLs.
-    url(r'', include(router.urls, namespace='qiprofile')),
+    # The qiprofile REST URLs.
+    url(r'', include(router.urls, namespace='api')),
     # The test URLs.
     url(r'^test/', include('django_jasmine.urls', namespace='test')),
     # Django REST authorization.

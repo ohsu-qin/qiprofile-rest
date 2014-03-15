@@ -10,14 +10,14 @@ def readme():
         return f.read()
 
 setup(
-    name = 'qiprofile',
+    name = 'qiprofile-rest',
     version = '1.1.1',
     author = 'OHSU Knight Cancer Institute',
     author_email = 'loneyf@ohsu.edu',
     packages = find_packages(),
     scripts = glob.glob('bin/*'),
-    url = 'http://quip1.ohsu.edu/8080/qiprofile',
-    description = 'qiprofile is the REST API for the Imaging Profile web application.',
+    url = 'http://quip1.ohsu.edu/8080/qiprofile-rest',
+    description = 'qiprofile-rest is the REST API for the Imaging Profile web application.',
     long_description = readme(),
     classifiers = [
         'Development Status :: 3 - Alpha',
