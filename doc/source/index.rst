@@ -24,7 +24,7 @@ Installation
 2. Contact the `OHSU QIN Git administrator`_ to obtain permission
    to access the ``qiprofile-rest`` Git repository.
 
-3. Clone the `qiprofile-rest repository`_::
+3. Clone the Git repository::
 
        cd ~/workspace
        git clone git@quip1:qiprofile-rest
