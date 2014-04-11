@@ -1,5 +1,6 @@
 **~
 _*/
+**/build
 /test/results/
 **.egg-info/
 .DS_Store
