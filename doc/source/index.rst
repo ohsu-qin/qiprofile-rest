@@ -1,5 +1,3 @@
-.. _index:
-
 =====================================================
 qiprofile-rest: Quantitative Imaging Profile REST API
 =====================================================
@@ -19,7 +17,7 @@ Quantitative Imaging Profile web application.
 ************
 Installation
 ************
-1. Install Git_ on your workstation.
+1. Install Git_ on your workstation, if necessary.
 
 2. Contact the `OHSU QIN Git administrator`_ to obtain permission
    to access the ``qiprofile-rest`` Git repository.
@@ -29,20 +27,52 @@ Installation
        cd ~/workspace
        git clone git@quip1:qiprofile-rest
    
-4. Install the Python_ pip_ package on your workstation.
+4. Install the Python_ pip_ package on your workstation, if necessary.
+   
+5. Install virtualenv_ package on your workstation, if necessary.
 
-5. Install the ``qiprofile-rest`` package::
+6. Activate a new virtual environment, e.g.::
+
+       virtualenv ~/qiprofile_rest
+       source ~/qiprofile_rest/bin/activate
+
+7. Install the ``qiprofile-rest`` package::
 
        cd ~/workspace/qiprofile-rest
        pip install -e .
+
+8. Install MongoDB_, if necessary.
+
+9. Start MongoDB::
+
+       mongod&
+
+10. Open a Mongo shell on an empty ``qiprofile`` database::
+
+       mongo qiprofile
+
+11. At the Mongo prompt, add the ``qiprofile`` user with the password specified in
+    the ``qiprofile_rest.settings.py`` ``DATABASES`` setting, e.g.::
+
+       db.addUser({user: 'qiprofile', pwd: '<db pswd>', roles=['readWrite', 'dbAdmin']})
 
 
 *****
 Usage
 *****
-Run the following command to dispays the server commands and options::
 
-     ./manage.py --help
+1. Start MongoDB::
+
+       mongod&
+
+2. Run the following command to display the REST server commands and options::
+
+       ./manage.py --help
+
+3. Start the REST server::
+
+       ./manage.py runserver
+
 
 ---------
 
@@ -60,14 +90,16 @@ Run the following command to dispays the server commands and options::
 
 .. _Knight Cancer Institute: http://www.ohsu.edu/xd/health/services/cancer
 
+.. _MongoDB: http://django-mongodb.org
+
 .. _OHSU QIN Git administrator: loneyf@ohsu.edu
 
 .. _pip: https://pypi.python.org/pypi/pip
 
 .. _Python: http://www.python.org
 
-.. _OHSU QIN Sharepoint: https://bridge.ohsu.edu/research/knight/projects/qin/SitePages/Home.aspx
+.. _virtualenv: http://www.virtualenv.org/
 
-.. _qiprofile-rest: http://quip1.ohsu.edu:8080/qiprofile-rest
 
-.. _qiprofile-rest repository: http://quip1.ohsu.edu:6060/qiprofile-rest
+.. toctree::
+  :hidden:
