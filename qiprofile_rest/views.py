@@ -2,8 +2,9 @@ import os
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import (generics, mixins, viewsets)
 import bson
-from .models import (User, Subject, SubjectDetail)
-from .serializers import (UserSerializer, SubjectSerializer, SubjectDetailSerializer)
+from .models import (User, Subject, SubjectDetail, SessionDetail)
+from .serializers import (UserSerializer, SubjectSerializer,
+                          SubjectDetailSerializer, SessionDetailSerializer)
 
 
 class InvalidFilter(Exception):
@@ -19,7 +20,7 @@ class SubjectViewSet(viewsets.ModelViewSet):
     model = Subject
     serializer_class = SubjectSerializer
     filter_fields = ('project', 'collection')       
-    
+
     @csrf_exempt
     def dispatch(self, request, *args, **kwargs):
         """
@@ -47,7 +48,12 @@ class SubjectViewSet(viewsets.ModelViewSet):
         return super(SubjectViewSet, self).dispatch(request, *args, **kwargs)
 
 
-class SubjectDetailViewSet(mixins.RetrieveModelMixin, mixins.UpdateModelMixin,
-                           viewsets.GenericViewSet):
+class SubjectDetailViewSet(viewsets.ModelViewSet):
     model = SubjectDetail
     serializer_class = SubjectDetailSerializer
+
+
+class SessionDetailViewSet(viewsets.ModelViewSet):
+    model = SessionDetail
+    serializer_class = SessionDetailSerializer
+
