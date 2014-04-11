@@ -1,17 +1,30 @@
+import os
+import re
 import glob
 from setuptools import (setup, find_packages)
+
+
+def version(package):
+    """
+    Return package version as listed in `__version__` in `init.py`.
+    """
+    init_py = open(os.path.join(package, '__init__.py')).read()
+    return re.search("__version__ = ['\"]([^'\"]+)['\"]", init_py).group(1)
+    
 
 def requires():
     with open('requirements.txt') as f:
         return f.read().splitlines()
 
+
 def readme():
     with open("README.rst") as f:
         return f.read()
 
+
 setup(
     name = 'qiprofile-rest',
-    version = '1.1.1',
+    version = version('qiprofile_rest'),
     author = 'OHSU Knight Cancer Institute',
     author_email = 'loneyf@ohsu.edu',
     packages = find_packages(),
