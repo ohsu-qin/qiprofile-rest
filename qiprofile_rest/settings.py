@@ -57,9 +57,12 @@ MIDDLEWARE_CLASSES = (
 # Database
 # https://docs.djangoproject.com/en/1.6/ref/settings/#databases
 
+# The development password is 3nigma.
+
 DATABASES = dict(
-   default=dict(ENGINE='django_mongodb_engine', NAME='qiprofile',
-                HOST='localhost', USER='loneyf', PASSWORD='3nigma')
+    # Don't define a user/password. See the REST_FRAMEWORK comment below.
+    default=dict(ENGINE='django_mongodb_engine', NAME='qiprofile',
+                HOST='localhost')
 )
 
 # Hosts/domain names that are valid for this site; required if DEBUG is False
@@ -72,11 +75,18 @@ REST_FRAMEWORK = {
     'DEFAULT_MODEL_SERIALIZER_CLASS':
         'rest_framework.serializers.HyperlinkedModelSerializer',
 
-    # The REST authentication permission.
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
-    ),
-    
+    # Uncomment to add REST authentication. qiprofile-rest is configured to run
+    # with authentication at the web application level. The REST server is
+    # restricted to localhost access, which is sufficient. Securing the REST
+    # server and MongoDB was unsuccessful, resulting in either a Mongo Error 18
+    # if Mongo is run with --auth or an 'auth fails' REST server error if Mongo
+    # is run without --auth and REST authentication is enabled below.
+    #
+    # # The REST authentication permission.
+    # 'DEFAULT_PERMISSION_CLASSES': (
+    #     'rest_framework.permissions.IsAuthenticated',
+    # ),
+
     # The query filters.
     'DEFAULT_FILTER_BACKENDS': (
         'rest_framework.filters.DjangoFilterBackend',
