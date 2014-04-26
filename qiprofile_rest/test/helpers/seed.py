@@ -4,7 +4,6 @@ import datetime
 import pytz
 import random
 import math
-from itertools import chain
 
 # Set the settings environment variable before loading the models.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'qiprofile_rest.settings')
@@ -46,9 +45,15 @@ def seed():
     # Initialize the pseudo-random generator.
     random.seed()
     # Make the subjects.
-    coll_sbjs = ((_seed_collection(coll) for coll in COLLECTIONS))
+    # Note: itertools chain on a generator iterates over
+    # the collections in python 1.7.1, but not python 1.7.2.
+    # The work-around is to build the subject collection
+    # in the for loop below.
+    coll_sbjs = []
+    for coll in COLLECTIONS:
+        coll_sbjs.append(_seed_collection(coll))
     
-    return chain.from_iterable(coll_sbjs)
+    return coll_sbjs
 
 
 def _seed_collection(collection):  
@@ -66,7 +71,7 @@ def _seed_subject(collection, subject_number):
     try:
         sbj = Subject.objects.get(number=subject_number, project=PROJECT,
                                   collection=collection)
-        print ("Del %s" % sbj.number)
+        # TODO - delete the subject?
     except Subject.DoesNotExist:
         pass    
     
