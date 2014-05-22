@@ -77,10 +77,10 @@ class TestSerializers(object):
         # Uncomment to print the scan intensity values.
         # print ("%s Session %d scan intensities:" % (subject, session.number))
         # print map(float, scan_intensity.intensities)
-        assert_true(not not session.detail.reconstructions,
+        assert_true(not not session.detail.registrations,
                "%s session %d registration is missing a registration" %
                (subject, session.number))
-        reg = session.detail.reconstructions[0]
+        reg = session.detail.registrations[0]
         assert_is_not_none(reg.id, "%s session %d registration is missing"
                                    " an id" % (subject, session.number))
         reg_intensity = reg.intensity
