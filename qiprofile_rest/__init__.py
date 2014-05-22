@@ -1,7 +1,7 @@
 """The Imaging Profile REST API django application."""
 from pkg_resources import get_distribution
 
-__version__ = '1.1.1'
+__version__ = '1.2.1'
 """
 The one-based major.minor.patch version.
 The version numbering scheme loosely follows http://semver.org/.
