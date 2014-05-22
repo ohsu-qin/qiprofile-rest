@@ -136,6 +136,12 @@ class Subject(models.Model):
     """Reference to the subject detail. The '+' related name
        prevents creation of a detail-to-subject foreign key field."""
 
+    def delete(self):
+        """Cascade delete this Subject."""
+        if self.detail:
+            self.detail.delete()
+        super(Subject, self).delete()
+
     def __str__(self):
         return ("%s %s Subject %d" %
                 (self.project, self.collection, self.number))
@@ -161,6 +167,12 @@ class SubjectDetail(models.Model):
     sessions = ListField(EmbeddedModelFieldOverride('Session'), blank=True)
     encounters = ListField(EmbeddedModelFieldOverride('Encounter'), blank=True)
 
+    def delete(self):
+        """Cascade delete this SubjectDetail."""
+        for sess in self.sessions:
+            sess.delete()
+        super(SubjectDetail, self).delete()
+
 
 class Session(models.Model, EmbeddedMixin, Idable):
     """The patient visit image session (*study* in DICOM terminology)."""
@@ -176,6 +188,12 @@ class Session(models.Model, EmbeddedMixin, Idable):
     """Reference to the session detail. The '+' related name
        prevents creation of a detail-to-session foreign key field."""
 
+    def delete(self):
+        """Cascade delete this Session."""
+        if self.detail:
+            self.detail.delete()
+        # Don't call superclass delete, since Session is embedded.
+
     def __str__(self):
         return "Session %d" % self.number
 
@@ -188,7 +206,7 @@ class SessionDetail(models.Model):
 
     bolus_arrival_index = models.SmallIntegerField()
     scan = EmbeddedModelFieldOverride('Scan')
-    reconstructions = ListField(EmbeddedModelFieldOverride('Reconstruction'))
+    registrations = ListField(EmbeddedModelFieldOverride('Registration'))
 
 
 class Modeling(models.Model, EmbeddedMixin, Idable):
@@ -208,7 +226,7 @@ class Modeling(models.Model, EmbeddedMixin, Idable):
 
 
 class ImageContainer(models.Model, EmbeddedMixin, Idable):
-    """The patient scan or reconstruction."""
+    """The patient scan or registration."""
 
     class Meta:
         abstract = True
@@ -227,9 +245,9 @@ class Scan(ImageContainer):
         managed = False
 
 
-class Reconstruction(ImageContainer):
-    """The patient image reconstruction that results from processing
-    the image scan, e.g. a registration."""
+class Registration(ImageContainer):
+    """The patient image registration that results from processing
+    the image scan."""
 
     class Meta:
         managed = False
@@ -237,7 +255,7 @@ class Reconstruction(ImageContainer):
     name = models.CharField(max_length=200)
 
     def __str__(self):
-        return "Reconstruction %s" % self.name
+        return "Registration %s" % self.name
 
 
 class Intensity(models.Model, EmbeddedMixin):
@@ -246,7 +264,7 @@ class Intensity(models.Model, EmbeddedMixin):
     class Meta:
         managed = False
 
-    probe = EmbeddedModelFieldOverride('Probe')
+    probe = EmbeddedModelFieldOverride('Probe', null=True, blank=True)
     
     intensities = ListField(models.FloatField())
     """The list of series intensities."""
