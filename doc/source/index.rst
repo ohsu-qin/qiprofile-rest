@@ -31,27 +31,29 @@ Installation
    
 5. Install virtualenv_ package on your workstation, if necessary.
 
-6. Activate a new virtual environment, e.g.::
+6. Install MongoDB_, if necessary.
+
+7. Install Django/MongoDB as described in the `Django MongoDB Engine setup`_.
+
+8. Activate a new virtual environment, e.g.::
 
        virtualenv ~/qiprofile_rest
        source ~/qiprofile_rest/bin/activate
 
-7. Install the ``qiprofile-rest`` package::
+9. Install the ``qiprofile-rest`` package::
 
        cd ~/workspace/qiprofile-rest
        pip install -e .
 
-8. Install MongoDB_, if necessary.
-
-9. Start MongoDB::
+10. Start MongoDB::
 
        mongod&
 
-10. Open a Mongo shell on an empty ``qiprofile`` database::
+11. Open a Mongo shell on an empty ``qiprofile`` database::
 
        mongo qiprofile
 
-11. At the Mongo prompt, add the ``qiprofile`` user with the password specified in
+12. At the Mongo prompt, add the ``qiprofile`` user with the password specified in
     the ``qiprofile_rest.settings.py`` ``DATABASES`` setting, e.g.::
 
        db.addUser({user: 'qiprofile', pwd: '<db pswd>', roles=['readWrite', 'dbAdmin']})
@@ -77,7 +79,6 @@ Usage
 ---------
 
 .. container:: copyright
-
   Copyright (C) 2014 Oregon Health & Science University `Knight Cancer Institute`_.
   All rights reserved.
   ``qiprofile-rest`` is confidential and may not be distributed in any form without
@@ -85,6 +86,10 @@ Usage
 
 
 .. Targets:
+
+.. _Django MongoDB Engine setup: http://django-mongodb-engine.readthedocs.org/en/latest/topics/setup.html
+
+.. _django-extensions: http://django-extensions.readthedocs.org
 
 .. _Git: http://www.git-scm.com
 
