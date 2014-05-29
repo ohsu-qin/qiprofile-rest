@@ -79,6 +79,7 @@ Usage
 ---------
 
 .. container:: copyright
+
   Copyright (C) 2014 Oregon Health & Science University `Knight Cancer Institute`_.
   All rights reserved.
   ``qiprofile-rest`` is confidential and may not be distributed in any form without
