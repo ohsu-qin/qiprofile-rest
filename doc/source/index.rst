@@ -33,30 +33,18 @@ Installation
 
 6. Install MongoDB_, if necessary.
 
-7. Install Django/MongoDB as described in the `Django MongoDB Engine setup`_.
+7. Activate a new virtual environment, e.g.::
 
-8. Activate a new virtual environment, e.g.::
+       virtualenv ~/qiprofile
+       source ~/qiprofile/bin/activate
 
-       virtualenv ~/qiprofile_rest
-       source ~/qiprofile_rest/bin/activate
+8. Install the django-nonrel fork of Django:
+
+       pip install git+https://github.com/django-nonrel/django@nonrel-1.5
 
 9. Install the ``qiprofile-rest`` package::
 
-       cd ~/workspace/qiprofile-rest
-       pip install -e .
-
-10. Start MongoDB::
-
-       mongod&
-
-11. Open a Mongo shell on an empty ``qiprofile`` database::
-
-       mongo qiprofile
-
-12. At the Mongo prompt, add the ``qiprofile`` user with the password specified in
-    the ``qiprofile_rest.settings.py`` ``DATABASES`` setting, e.g.::
-
-       db.addUser({user: 'qiprofile', pwd: '<db pswd>', roles=['readWrite', 'dbAdmin']})
+       pip install git+https://quip1.ohsu.edu/qiprofile-rest
 
 
 *****
