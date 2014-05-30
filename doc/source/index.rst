@@ -38,13 +38,13 @@ Installation
        virtualenv ~/qiprofile
        source ~/qiprofile/bin/activate
 
-8. Install the django-nonrel fork of Django:
+8. Install the ``qiprofile-rest`` requirements:
 
-       pip install git+https://github.com/django-nonrel/django@nonrel-1.5
+       pip install -r requirements.txt
 
 9. Install the ``qiprofile-rest`` package::
 
-       pip install git+https://quip1.ohsu.edu/qiprofile-rest
+       pip install git+ssh://quip1.ohsu.edu/qiprofile-rest
 
 
 *****

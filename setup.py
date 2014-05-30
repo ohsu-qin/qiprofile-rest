@@ -2,7 +2,7 @@ import os
 import re
 import glob
 from setuptools import (setup, find_packages)
-
+from pip.req import parse_requirements
 
 def version(package):
     """
@@ -14,8 +14,10 @@ def version(package):
     
 
 def requires():
+    valid_re = re.compile('[-\w]+(==[-\w.]+)?$')
     with open('requirements.txt') as f:
-        return f.read().splitlines()
+      entries = f.read().splitlines()
+    return [entry for entry in entries if valid_re.match(entry)]
 
 
 def readme():
