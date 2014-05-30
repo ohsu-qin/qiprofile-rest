@@ -38,13 +38,9 @@ Installation
        virtualenv ~/qiprofile
        source ~/qiprofile/bin/activate
 
-8. Install the ``qiprofile-rest`` requirements:
+8. Install ``qiprofile-rest`:
 
-       pip install -r requirements.txt
-
-9. Install the ``qiprofile-rest`` package::
-
-       pip install git+ssh://quip1.ohsu.edu/qiprofile-rest
+       ./manage.py install
 
 
 *****
@@ -76,7 +72,9 @@ Usage
 
 .. Targets:
 
-.. _Django MongoDB Engine setup: http://django-mongodb-engine.readthedocs.org/en/latest/topics/setup.html
+.. _Django MongoDB Engine: http://django-mongodb-engine.readthedocs.org/en/
+
+.. _django-nonrel Django clone: https://github.com/django-nonrel/django
 
 .. _django-extensions: http://django-extensions.readthedocs.org
 
