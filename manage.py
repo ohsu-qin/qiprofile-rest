@@ -12,10 +12,10 @@ def main(argv=sys.argv):
     if len(argv) == 2 and argv[1] == 'install':
         return _install()
     else:
-        return _delegate_to_django()
+        return _delegate_to_django(argv)
 
 
-def _delegate_to_django():
+def _delegate_to_django(argv):
     from django.core import management
     
     # Tell Django where to find the application configuration.
