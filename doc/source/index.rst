@@ -38,7 +38,7 @@ Installation
        virtualenv ~/qiprofile
        source ~/qiprofile/bin/activate
 
-8. Install ``qiprofile-rest`:
+8. Install ``qiprofile-rest`::
 
        ./manage.py install
 
