@@ -1,4 +1,5 @@
 import os
+import qiprofile_rest
 
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.intersphinx', 'sphinx.ext.todo']
 autoclass_content = "both"

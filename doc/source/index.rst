@@ -95,3 +95,6 @@ Usage
 
 .. toctree::
   :hidden:
+  
+  api/index
+
