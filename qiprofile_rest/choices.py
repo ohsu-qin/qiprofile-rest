@@ -1,5 +1,3 @@
-
-
 POS_NEG_CHOICES = [('Positive', True), ('Negative', False)]
 """The Boolean choices for Positive or Negative status."""
 
