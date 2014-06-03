@@ -1,5 +1,4 @@
 """The Imaging Profile REST API django application."""
-from pkg_resources import get_distribution
 
 __version__ = '1.2.1'
 """
