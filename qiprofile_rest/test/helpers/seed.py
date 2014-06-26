@@ -243,9 +243,11 @@ def _files_for(subject_number, session_number, resource=None):
                                                    session_number)
     # The file path prefix.
     if resource:
-        prefix = parent + "/%s_" % resource
+        # Example:
+        # data/QIN/Subject003/Session02/reg_AuX4d/reg_AuX4d_series27.nii.gz
+        prefix = parent + "/%s/%s_" % (resource, resource)
     else:
-        prefix = parent + '/'
+        prefix = parent + '/scans/'
     # The file path template.
     tmpl = prefix + "series%02d.nii.gz"
 
