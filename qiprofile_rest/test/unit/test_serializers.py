@@ -57,6 +57,7 @@ class TestSerializers(object):
                                           (subject, session.number))
         assert_is_not_none(session.modeling.id, "%s session %d modeling is missing an id" %
                                           (subject, session.number))
+        
         # Uncomment to print the modeling parameters.
         #mdl = session.modeling
         #print ("%s Session %d %f %f %f" % 
@@ -77,12 +78,20 @@ class TestSerializers(object):
         # Uncomment to print the scan intensity values.
         # print ("%s Session %d scan intensities:" % (subject, session.number))
         # print map(float, scan_intensity.intensities)
+        
         assert_true(not not session.detail.registrations,
                "%s session %d registration is missing a registration" %
                (subject, session.number))
         reg = session.detail.registrations[0]
         assert_is_not_none(reg.id, "%s session %d registration is missing"
                                    " an id" % (subject, session.number))
+        assert_equal(reg.name, "reg_%02d" % session.number,
+                     "%s session %d registration name incorrect: %s" %
+                     (subject, session.number, reg.name))
+        assert_equal(reg.parameters, seed.REG_PARAMS,
+                     "%s session %s %s parameters incorrect: %s" %
+                     (subject, session.number, reg.name, reg.parameters))
+        
         reg_intensity = reg.intensity
         assert_is_not_none(reg.intensity,
                            "%s session %d registration is missing an intensity" %

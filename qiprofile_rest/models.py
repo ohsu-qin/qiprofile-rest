@@ -4,16 +4,15 @@ The Imaging Profile Mongodb data model.
 This model can be normalized to a relational database back-end as
 follows:
 
-* Create the Project and Collection classes with a *name* field.
-
-* Reference the Project and Collection from Subject.
-
 * Pull SubjectDetail into Subject.
 
 * Replace each embedded field with a foreign key.
 
 * Replace each list field with a one-to-many relationship or
   MultiSelectField.
+
+* Replace each dictionary field with a one-to-many reference to a
+  property name/value table.
 
 * Remove the ``managed = False`` setting for embedded classes.
 
@@ -33,7 +32,7 @@ from __future__ import unicode_literals
 import re
 from django.utils.encoding import python_2_unicode_compatible
 from django.db import models
-from djangotoolbox.fields import (ListField, EmbeddedModelField)
+from djangotoolbox.fields import (ListField, DictField, EmbeddedModelField)
 from bson.objectid import ObjectId
 from . import (choices, validators)
 
@@ -175,7 +174,7 @@ class SubjectDetail(models.Model):
 
 
 class Session(models.Model, EmbeddedMixin, Idable):
-    """The patient visit image session (*study* in DICOM terminology)."""
+    """The MR session (*study* in DICOM terminology)."""
 
     class Meta:
         managed = False
@@ -199,14 +198,24 @@ class Session(models.Model, EmbeddedMixin, Idable):
 
 
 class SessionDetail(models.Model):
-    """The patient visit image session detailed content."""
+    """The MR session detailed content."""
 
     class Meta:
         db_table = 'qiprofile_session_detail'
 
     bolus_arrival_index = models.SmallIntegerField()
+    series = ListField(EmbeddedModelFieldOverride('Series'))
     scan = EmbeddedModelFieldOverride('Scan')
     registrations = ListField(EmbeddedModelFieldOverride('Registration'))
+
+
+class Series(models.Model, EmbeddedMixin, Idable):
+    """The MR series."""
+
+    class Meta:
+        managed = False
+
+    number = models.SmallIntegerField()
 
 
 class Modeling(models.Model, EmbeddedMixin, Idable):
@@ -253,6 +262,9 @@ class Registration(ImageContainer):
         managed = False
 
     name = models.CharField(max_length=200)
+    """The resource name, e.g. ``reg_k3RtZ``"""
+    
+    parameters = DictField()
 
     def __str__(self):
         return "Registration %s" % self.name

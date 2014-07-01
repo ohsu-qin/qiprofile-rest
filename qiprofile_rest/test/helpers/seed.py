@@ -10,7 +10,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'qiprofile_rest.settings')
 
 from qiprofile_rest import choices
 from qiprofile_rest.models import (Subject, SubjectDetail, Session, SessionDetail,
-                                   Modeling, Scan, Registration, Intensity,
+                                   Modeling, Series, Scan, Registration, Intensity,
                                    Probe,  Encounter, BreastPathology, TNM,
                                    NottinghamGrade, HormoneReceptorStatus)
 
@@ -39,6 +39,19 @@ V_E_0 = 0.6113
 AVG_BOLUS_ARRIVAL_NDX = 2
 """Bolus arrivals are spread evenly around the third visit."""
 
+REG_PARAMS = dict(
+    algorithm='ANTS',
+    transforms='[Rigid, Affine, SyN]',
+    metric='[MI, MI, CC]',
+    metric_weight='[1, 1, 1]',
+    number_of_iterations='[[10000, 500, 200, 100], [10000, 500, 200, 100], [100, 20, 10]]',
+    radius_or_number_of_bins='[32, 32, 4]',
+    sampling_strategy='[Regular, Regular, None]',
+    sampling_percentage='[0.3, 0.3, None]',
+    smoothing_sigmas='[[3,2,1,0], [3,2,1,0], [2,1,0]]',
+    shrink_factors='[[8,4,2,1], [8,4,2,1], [4,2,1]]',
+    transform_parameters='[(0.1,), (0.1,), (0.1, 3, 0)]'
+)
 
 def seed():
     """
@@ -57,7 +70,7 @@ def seed():
     # in the for loop below.
     coll_sbjs = []
     for coll in COLLECTIONS:
-        coll_sbjs.append(_seed_collection(coll))
+        coll_sbjs.extend(_seed_collection(coll))
 
     return coll_sbjs
 
@@ -100,6 +113,7 @@ def _seed_subject(collection, subject_number):
         sbj = _create_subject(collection, subject_number)
 
     return sbj
+
 
 def _create_subject(collection, subject_number):
     sbj_dtl = _create_subject_detail(subject_number)
@@ -201,6 +215,9 @@ def _create_session(subject_number, session_number):
     modeling = Modeling(name=name, fxl_k_trans=fxl_k_trans, fxr_k_trans=fxr_k_trans,
                         v_e=v_e, tau_i=tau_i)
 
+    # Make the series list.
+    series = _create_all_series()
+
     # Make the scan.
     scan = _create_scan(subject_number, session_number)
 
@@ -208,7 +225,7 @@ def _create_session(subject_number, session_number):
     registration = _create_registration(subject_number, session_number)
 
     # Make the session detail.
-    sess_dtl = SessionDetail(bolus_arrival_index=arv, scan=scan,
+    sess_dtl = SessionDetail(bolus_arrival_index=arv, series=series, scan=scan,
                              registrations=[registration])
 
     # Save the detail.
@@ -216,6 +233,11 @@ def _create_session(subject_number, session_number):
 
     return Session(number=session_number, acquisition_date=date,
                    modeling=modeling, detail=sess_dtl)
+
+
+def _create_all_series():
+    # @returns an array of 32 Series objects with numbers 7, 9, ...
+    return [Series(number=7 + (2 * i)) for i in range(0,32)]
 
 
 def _create_scan(subject_number, session_number):
@@ -234,7 +256,8 @@ def _create_registration(subject_number, session_number):
     files = _files_for(subject_number, session_number, resource)
     intensity = _create_intensity()
 
-    return Registration(name=resource, files=files, intensity=intensity)
+    return Registration(name=resource, files=files, intensity=intensity,
+                        parameters=REG_PARAMS)
 
 
 def _files_for(subject_number, session_number, resource=None):
