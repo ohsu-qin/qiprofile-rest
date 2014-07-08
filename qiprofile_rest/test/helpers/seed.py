@@ -283,9 +283,11 @@ FILE_TMPL = "series%02d.nii.gz"
 SCAN_TMPL = SESSION_TMPL + "scan/%d/" + FILE_TMPL
 RESOURCE_TMPL = SESSION_TMPL + "resource/%s/" + FILE_TMPL
 
+
 def _scan_filename(subject, session_number, time_point):
     return SCAN_TMPL % (subject.project, subject.collection, subject.number,
                         session_number, time_point, time_point)
+
 
 def _resource_filename(subject, session_number, resource, time_point):
     return RESOURCE_TMPL % (subject.project, subject.collection,
@@ -306,6 +308,7 @@ def _create_intensity():
         intensities.append(intensity)
 
     return Intensity(intensities=intensities)
+
 
 if __name__ == "__main__":
     seed()
