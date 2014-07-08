@@ -116,16 +116,17 @@ def _seed_subject(collection, subject_number):
 
 
 def _create_subject(collection, subject_number):
-    sbj_dtl = _create_subject_detail(subject_number)
-    sbj_dtl.save()
     sbj = Subject(number=subject_number, project=PROJECT,
-                  collection=collection, detail=sbj_dtl)
+                collection=collection)
+    detail = _create_subject_detail(sbj)
+    detail.save()
+    sbj.detail = detail
     sbj.save()
 
     return sbj
 
 
-def _create_subject_detail(subject_number):
+def _create_subject_detail(subject):
     # The patient demographics.
     yr = int(40 * random.random()) + 1950
     birth_date = datetime.datetime(yr, 7, 7, tzinfo=pytz.utc)
@@ -145,7 +146,7 @@ def _create_subject_detail(subject_number):
     encounters = [biopsy, post_treatment]
 
     # Make the sessions.
-    sessions = [_create_session(subject_number, sess_nbr) for sess_nbr in range(1, 5)]
+    sessions = [_create_session(subject, sess_nbr) for sess_nbr in range(1, 5)]
 
     # Make the subject detail.
     return SubjectDetail(birth_date=birth_date, races=races, encounters=encounters,
@@ -192,9 +193,9 @@ def _create_tnm():
     return TNM(grade=tnm_grade, size=size, lymph_status=lymph_status, metastasis=False)
 
 
-def _create_session(subject_number, session_number):
+def _create_session(subject, session_number):
     # Bump the session month.
-    mo = subject_number * session_number
+    mo = subject.number * session_number
     # Stagger the inter-session duration.
     day = DATE_0.day + ((session_number - 1) * 5)
     date = DATE_0.replace(month=mo, day=day)
@@ -211,7 +212,7 @@ def _create_session(subject_number, session_number):
     v_e = V_E_0 + offset
     offset = (0.5 - random.random()) * 0.2
     tau_i = TAU_I_0 + offset
-    name = "pk_%d" % (((subject_number - 1) * 3) + session_number)
+    name = "pk_%d" % (((subject.number - 1) * 3) + session_number)
     modeling = Modeling(name=name, fxl_k_trans=fxl_k_trans, fxr_k_trans=fxr_k_trans,
                         v_e=v_e, tau_i=tau_i)
 
@@ -219,10 +220,10 @@ def _create_session(subject_number, session_number):
     series = _create_all_series()
 
     # Make the scan.
-    scan = _create_scan(subject_number, session_number)
+    scan = _create_scan(subject, session_number)
 
     # Make the registration.
-    registration = _create_registration(subject_number, session_number)
+    registration = _create_registration(subject, session_number)
 
     # Make the session detail.
     sess_dtl = SessionDetail(bolus_arrival_index=arv, series=series, scan=scan,
@@ -240,8 +241,8 @@ def _create_all_series():
     return [Series(number=7 + (2 * i)) for i in range(0,32)]
 
 
-def _create_scan(subject_number, session_number):
-    files = _files_for(subject_number, session_number)
+def _create_scan(subject, session_number):
+    files = _files_for(subject, session_number)
     intensity = _create_intensity()
     # Add a motion artifact.
     start = 12 + int(random.random() * 5)
@@ -251,30 +252,44 @@ def _create_scan(subject_number, session_number):
     return Scan(files=files, intensity=intensity)
 
 
-def _create_registration(subject_number, session_number):
+def _create_registration(subject, session_number):
     resource = "reg_%02d" % session_number
-    files = _files_for(subject_number, session_number, resource)
+    files = _files_for(subject, session_number, resource)
     intensity = _create_intensity()
 
     return Registration(name=resource, files=files, intensity=intensity,
                         parameters=REG_PARAMS)
 
 
-def _files_for(subject_number, session_number, resource=None):
-    # The parent directory path.
-    parent = "data/QIN/Subject%03d/Session%02d" % (subject_number,
-                                                   session_number)
-    # The file path prefix.
+def _files_for(subject, session_number, resource=None):
+    # Creates the test file names. If there is a resource, then
+    # the image file container is that resource. Otherwise, the
+    # the image file container is ``scan``.
+    #
+    # Examples:
+    # * data/QIN_Test/Breast003/Session02/scan/2/series02.nii.gz
+    # * data/QIN_Test/Sarcoma003/Session02/resource/reg_AuX4d/series27.nii.gz
+    #
+    # @return an array of 32 file names
     if resource:
-        # Example:
-        # data/QIN/Subject003/Session02/reg_AuX4d/reg_AuX4d_series27.nii.gz
-        prefix = parent + "/%s/%s_" % (resource, resource)
+        create_filename = lambda time_point: _resource_filename(subject, session_number, resource, time_point)
     else:
-        prefix = parent + '/scans/'
-    # The file path template.
-    tmpl = prefix + "series%02d.nii.gz"
+        create_filename = lambda time_point: _scan_filename(subject, session_number, time_point)
 
-    return [tmpl % i for i in range(1,33)]
+    return [create_filename(time_point) for time_point in range(1,33)]
+
+SESSION_TMPL = "data/%s/%s%03d/Session%02d/"
+FILE_TMPL = "series%02d.nii.gz"
+SCAN_TMPL = SESSION_TMPL + "scan/%d/" + FILE_TMPL
+RESOURCE_TMPL = SESSION_TMPL + "resource/%s/" + FILE_TMPL
+
+def _scan_filename(subject, session_number, time_point):
+    return SCAN_TMPL % (subject.project, subject.collection, subject.number,
+                        session_number, time_point, time_point)
+
+def _resource_filename(subject, session_number, resource, time_point):
+    return RESOURCE_TMPL % (subject.project, subject.collection,
+                            subject.number, session_number, resource, time_point)
 
 
 def _create_intensity():
