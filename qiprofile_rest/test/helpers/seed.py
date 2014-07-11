@@ -141,7 +141,7 @@ def _create_subject_detail(subject):
     post_treatment_date = DATE_0.replace(month=5)
     post_treatment_tnm = _create_tnm()
     post_treatment = Encounter(encounter_type='Assessment', date=post_treatment_date,
-                               outcome=post_treatment_tnm)
+                               outcome=BreastPathology(tnm=post_treatment_tnm))
 
     encounters = [biopsy, post_treatment]
 
