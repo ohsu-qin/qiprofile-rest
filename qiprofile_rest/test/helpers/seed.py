@@ -4,7 +4,7 @@ from datetime import datetime
 import pytz
 import random
 import math
-
+from mongoengine import connect
 from qiprofile_rest import choices
 from qiprofile_rest.models import (Subject, SubjectDetail, Session, SessionDetail,
                                    Modeling, Series, Scan, Registration, Intensity,
@@ -370,4 +370,5 @@ def _create_intensity():
 
 
 if __name__ == "__main__":
+    connect(db='qiprofile')
     seed()
