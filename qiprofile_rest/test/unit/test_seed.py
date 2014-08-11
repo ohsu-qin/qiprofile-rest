@@ -7,16 +7,21 @@ from qiprofile_rest.models import Subject
 from qiprofile_rest.test.helpers import seed
 
 class TestSeed(object):
+    """
+    This TestSeed class tests the seed helper utility.
+
+    Note: this test drops the ``qiprofile-test`` Mongo database
+    at the beginning and end of execution.
+    """
     def setup(self):
         connect(db='qiprofile_test')
         self.db = get_db()
+        self.db.connection.drop_database('qiprofile_test')
         self._subjects = seed.seed()
 
     def tearDown(self):
-        for collection in self.db.collection_names():
-            if not collection.startswith('system.'):
-                self.db.drop_collection(collection)
-        
+        self.db.connection.drop_database('qiprofile_test')
+
     def test_serialization(self):
         for saved_sbj in self._subjects:
             query = dict(project=saved_sbj.project,
@@ -33,7 +38,12 @@ class TestSeed(object):
                                   (subject, len(sessions)))
         for session in sessions:
             self._validate_session(subject, session)
-        
+
+        treatments = subject.detail.treatments
+        assert_equal(len(treatments), 3,
+                     "%s session %d treatments count is incorrect: %d" %
+                     (subject, session.number, len(treatments)))
+
         encounters = subject.detail.encounters
         assert_equal(len(encounters), 2,
                      "%s session %d encounter count is incorrect: %d" %
@@ -47,13 +57,13 @@ class TestSeed(object):
         path = biopsy.outcomes[0]
         assert_is_not_none(path.tnm, "%s biopsy pathology report is missing"
                                      " a TNM" % subject)
-        post_trt = next((enc for enc in encounters if enc.encounter_type == 'Post-treatment'),
+        post_trt = next((enc for enc in encounters if enc.encounter_type == 'Assessment'),
                       None)
-        assert_is_not_none(post_trt, "%s session %d is missing a post-treatment"
-                                     " assessment" % (subject, session.number))
+        assert_is_not_none(post_trt, "%s session %d is missing an assessment" %
+                                     (subject, session.number))
         assert_equal(len(post_trt.outcomes), 1,
                      "%s post-treatment assessment outcomes size is incorrect" % subject)
-            
+
     def _validate_session(self, subject, session):
         assert_is_not_none(session.acquisition_date,
                            "%s session %d is missing an acquisition date" %
@@ -67,11 +77,11 @@ class TestSeed(object):
                                         (subject, session.number))
         assert_is_not_none(session.detail.scan, "%s session %d is missing scans" %
                                              (subject, session.number))
-                    
+
         scan_intensity = session.detail.scan.intensity
         assert_is_not_none(scan_intensity, "%s session %d scan is missing an"
                                            " intensity" % (subject, session.number))
-        
+
         assert_true(not not session.detail.registrations,
                "%s session %d registration is missing a registration" %
                (subject, session.number))
@@ -82,7 +92,7 @@ class TestSeed(object):
         assert_equal(reg.parameters, seed.REG_PARAMS,
                      "%s session %s %s parameters incorrect: %s" %
                      (subject, session.number, reg.name, reg.parameters))
-        
+
         reg_intensity = reg.intensity
         assert_is_not_none(reg.intensity,
                            "%s session %d registration is missing an intensity" %

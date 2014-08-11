@@ -8,9 +8,10 @@ from mongoengine import connect
 from qiprofile_rest import choices
 from qiprofile_rest.models import (Subject, SubjectDetail, Session, SessionDetail,
                                    Modeling, Series, Scan, Registration, Intensity,
-                                   Probe,  Encounter, BreastPathology, SarcomaPathology,
-                                   TNM, NottinghamGrade, FNCLCCGrade, NecrosisPercentValue,
-                                   NecrosisPercentRange, HormoneReceptorStatus)
+                                   Probe,  Treatment, Encounter, BreastPathology,
+                                   SarcomaPathology, TNM, NottinghamGrade, FNCLCCGrade,
+                                   NecrosisPercentValue, NecrosisPercentRange,
+                                   HormoneReceptorStatus)
 
 PROJECT = 'QIN_Test'
 
@@ -134,19 +135,31 @@ def _create_subject_detail(subject):
     biopsy_date = DATE_0.replace(year=2012, month=10)
     biopsy_path = _create_pathology(subject.collection)
     biopsy = Encounter(encounter_type='Biopsy', date=biopsy_date, outcomes=[biopsy_path])
-    # The post-treatment encounter.
-    post_treatment_date = DATE_0.replace(month=5)
-    post_treatment_tnm = _create_tnm(subject.collection)
-    post_treatment = Encounter(encounter_type='Post-treatment', date=post_treatment_date,
-                               outcomes=[post_treatment_tnm])
-    encounters = [biopsy, post_treatment]
+    # The assessment encounter.
+    assessment_date = DATE_0.replace(month=10)
+    assessment_tnm = _create_tnm(subject.collection)
+    assessment = Encounter(encounter_type='Assessment', date=assessment_date,
+                               outcomes=[assessment_tnm])
+    encounters = [biopsy, assessment]
+
+    # The treatments.
+    neo_tx = Treatment(treatment_type='Neoadjuvant',
+                           begin_date=DATE_0.replace(month=5),
+                           end_date=DATE_0.replace(month=11))
+    primary_tx_date = DATE_0.replace(year=2014, month=1)
+    primary_tx = Treatment(treatment_type='Primary', begin_date=primary_tx_date,
+                           end_date=primary_tx_date)
+    adj_tx = Treatment(treatment_type='Adjuvant',
+                       begin_date=primary_tx_date.replace(month=2),
+                       end_date=primary_tx_date.replace(month=5))
+    treatments = [neo_tx, primary_tx, adj_tx]
 
     # Make the sessions.
     sessions = [_create_session(subject, sess_nbr) for sess_nbr in range(1, 5)]
 
     # Make the subject detail.
     return SubjectDetail(birth_date=birth_date, races=races, encounters=encounters,
-                         sessions=sessions)
+                         treatments=treatments, sessions=sessions)
 
 
 def _create_pathology(collection):
@@ -370,5 +383,5 @@ def _create_intensity():
 
 
 if __name__ == "__main__":
-    connect(db='qiprofile')
+    connect(db='qiprofile_test')
     seed()
