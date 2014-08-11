@@ -1,24 +1,23 @@
 #!/usr/bin/env python
 import os
-import datetime
+from datetime import datetime
 import pytz
 import random
 import math
-
-# Set the settings environment variable before loading the models.
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'qiprofile_rest.settings')
-
+from mongoengine import connect
 from qiprofile_rest import choices
 from qiprofile_rest.models import (Subject, SubjectDetail, Session, SessionDetail,
                                    Modeling, Series, Scan, Registration, Intensity,
-                                   Probe,  Encounter, BreastPathology, TNM,
-                                   NottinghamGrade, HormoneReceptorStatus)
+                                   Probe,  Treatment, Encounter, BreastPathology,
+                                   SarcomaPathology, TNM, NottinghamGrade, FNCLCCGrade,
+                                   NecrosisPercentValue, NecrosisPercentRange,
+                                   HormoneReceptorStatus)
 
 PROJECT = 'QIN_Test'
 
 COLLECTIONS = ['Breast', 'Sarcoma']
 
-DATE_0 = datetime.datetime(2013, 1, 4, tzinfo=pytz.utc)
+DATE_0 = datetime(2013, 1, 4, tzinfo=pytz.utc)
 """The first image acquisition date."""
 
 FXL_K_TRANS_AVG = 0.2
@@ -116,54 +115,65 @@ def _seed_subject(collection, subject_number):
 
 
 def _create_subject(collection, subject_number):
-    sbj = Subject(number=subject_number, project=PROJECT,
-                collection=collection)
-    detail = _create_subject_detail(sbj)
+    subject = Subject(number=subject_number, project=PROJECT,
+                      collection=collection)
+    detail = _create_subject_detail(subject)
     detail.save()
-    sbj.detail = detail
-    sbj.save()
+    subject.detail = detail
+    subject.save()
 
-    return sbj
+    return subject
 
 
 def _create_subject_detail(subject):
     # The patient demographics.
     yr = int(40 * random.random()) + 1950
-    birth_date = datetime.datetime(yr, 7, 7, tzinfo=pytz.utc)
+    birth_date = datetime(yr, 7, 7, tzinfo=pytz.utc)
     races = [choices.RACE_CHOICES[int(len(choices.RACE_CHOICES) * random.random())][0]]
 
     # The biopsy encounter.
     biopsy_date = DATE_0.replace(year=2012, month=10)
-    biopsy_path = _create_pathology()
-    biopsy = Encounter(encounter_type='Biopsy', date=biopsy_date, outcome=biopsy_path)
+    biopsy_path = _create_pathology(subject.collection)
+    biopsy = Encounter(encounter_type='Biopsy', date=biopsy_date, outcomes=[biopsy_path])
+    # The assessment encounter.
+    assessment_date = DATE_0.replace(month=10)
+    assessment_tnm = _create_tnm(subject.collection)
+    assessment = Encounter(encounter_type='Assessment', date=assessment_date,
+                               outcomes=[assessment_tnm])
+    encounters = [biopsy, assessment]
 
-    # The post-treatment encounter.
-    post_treatment_date = DATE_0.replace(month=5)
-    post_treatment_tnm = _create_tnm()
-    post_treatment = Encounter(encounter_type='Assessment', date=post_treatment_date,
-                               outcome=post_treatment_tnm)
-
-    encounters = [biopsy, post_treatment]
+    # The treatments.
+    neo_tx = Treatment(treatment_type='Neoadjuvant',
+                           begin_date=DATE_0.replace(month=5),
+                           end_date=DATE_0.replace(month=11))
+    primary_tx_date = DATE_0.replace(year=2014, month=1)
+    primary_tx = Treatment(treatment_type='Primary', begin_date=primary_tx_date,
+                           end_date=primary_tx_date)
+    adj_tx = Treatment(treatment_type='Adjuvant',
+                       begin_date=primary_tx_date.replace(month=2),
+                       end_date=primary_tx_date.replace(month=5))
+    treatments = [neo_tx, primary_tx, adj_tx]
 
     # Make the sessions.
     sessions = [_create_session(subject, sess_nbr) for sess_nbr in range(1, 5)]
 
     # Make the subject detail.
     return SubjectDetail(birth_date=birth_date, races=races, encounters=encounters,
-                         sessions=sessions)
+                         treatments=treatments, sessions=sessions)
 
 
-def _create_pathology():
+def _create_pathology(collection):
+    if collection == 'Breast':
+        return _create_breast_pathology()
+    elif collection == 'Sarcoma':
+        return _create_sarcoma_pathology()
+    else:
+        raise ValueError("Collection type not recognized: %s" % collection)
+
+
+def _create_breast_pathology():
     # The TNM score.
-    tnm = _create_tnm()
-
-    # The Nottingham grade.
-    tubular_formation = int(random.random() * 4) + 1
-    nuclear_pleomorphism = int(random.random() * 4) + 1
-    mitotic_count = int(random.random() * 4) + 1
-    nottingham = NottinghamGrade(tubular_formation=tubular_formation,
-                                 nuclear_pleomorphism=nuclear_pleomorphism,
-                                 mitotic_count=mitotic_count)
+    tnm = _create_tnm('Breast')
 
     # The estrogen status.
     quick_score = int(random.random() * 10)
@@ -175,22 +185,88 @@ def _create_pathology():
     quick_score = int(random.random() * 10)
     intensity = int(random.random() * 100)
     progestrogen = HormoneReceptorStatus(positive=True, quick_score=quick_score,
-                                     intensity=intensity)
+                                         intensity=intensity)
 
-    # The pathogy findings.
-    her2_neu_ihc = int(random.random() * 5)
+    # HER2 NEU IHC is one of 0, 1, 2, 3.
+    her2_neu_ihc = int(random.random() * 4)
+    
+    # HER2 NEU FISH is True (positive) or False (negative).
+    if int(random.random() * 2):
+        her2_neu_fish = True
+    else:
+        her2_neu_fish = False
+    
+    # KI67 is a percent.
     ki_67 = int(random.random() * 100)
 
-    return BreastPathology(tnm=tnm, grade=nottingham, estrogen=estrogen,
-                           progestrogen=progestrogen, her2_neu_ihc=her2_neu_ihc,
-                           her2_neu_fish=True, ki_67=ki_67)
+    return BreastPathology(tnm=tnm, #estrogen=estrogen,
+                           progestrogen=progestrogen,
+                           her2_neu_ihc=her2_neu_ihc,
+                           her2_neu_fish=her2_neu_fish,
+                           ki_67=ki_67)
 
 
-def _create_tnm():
-    tnm_grade = int(random.random() * 3) + 2
-    size = "pT%s" % tnm_grade
-    lymph_status = int(random.random() * 5)
-    return TNM(grade=tnm_grade, size=size, lymph_status=lymph_status, metastasis=False)
+def _create_sarcoma_pathology():
+    # The TNM score.
+    tnm = _create_tnm('Sarcoma')
+
+    # The tumor site.
+    site = 'Thigh'
+
+    # The necrosis percent is either a value or a decile range.
+    if int(random.random() * 2):
+        value = int(random.random() * 100)
+        necrosis_pct = NecrosisPercentValue(value=value)
+    else:
+        low = int(random.random() * 10) * 10
+        start = NecrosisPercentRange.LowerBound(value=low)
+        stop = NecrosisPercentRange.UpperBound(value=low+10)
+        necrosis_pct = NecrosisPercentRange(start=start, stop=stop)
+
+    # The histology
+    histology = 'Fibrosarcoma'
+
+    return SarcomaPathology(tnm=tnm, site=site, necrosis_pct=necrosis_pct,
+                            histology=histology)
+
+
+def _create_tnm(collection):
+    if collection == 'Breast':
+        grade = _create_breast_grade()
+    elif collection == 'Sarcoma':
+        grade = _create_sarcoma_grade()
+    else:
+        raise ValueError("Collection type not recognized: %s" % collection)
+    size = "pT%d" % (int(random.random() * 3) + 2)
+    lymph_status = int(random.random() * 4)
+    
+    return TNM(grade=grade, size=size, lymph_status=lymph_status,
+               metastasis=False, lymphatic_vessel_invasion=False)
+
+
+def _create_breast_grade():
+    """
+    @return the Nottingham grade
+    """
+    tubular_formation = int(random.random() * 4) + 1
+    nuclear_pleomorphism = int(random.random() * 4) + 1
+    mitotic_count = int(random.random() * 4) + 1
+    
+    return NottinghamGrade(tubular_formation=tubular_formation,
+                                 nuclear_pleomorphism=nuclear_pleomorphism,
+                                 mitotic_count=mitotic_count)
+
+
+def _create_sarcoma_grade():
+    """
+    @return the FNCLCC grade
+    """
+    differentiation = int(random.random() * 3) + 1
+    mitotic_count = int(random.random() * 3) + 1
+    necrosis = int(random.random() * 3)
+    
+    return FNCLCCGrade(differentiation=differentiation, mitotic_count=mitotic_count,
+                       necrosis=necrosis)
 
 
 def _create_session(subject, session_number):
@@ -202,6 +278,17 @@ def _create_session(subject, session_number):
 
     # The bolus arrival.
     arv = round((0.5 - random.random()) * 4) + AVG_BOLUS_ARRIVAL_NDX
+    # Make the series list.
+    series = _create_all_series()
+    # Make the scan.
+    scan = _create_scan(subject, session_number)
+    # Make the registration.
+    reg = _create_registration(subject, session_number)
+    # Make the session detail.
+    detail = SessionDetail(bolus_arrival_index=arv, series=series, scan=scan,
+                           registrations=[reg])
+    # Save the detail.
+    detail.save()
 
     # Add modeling parameters with a random offset.
     factor = 1 + ((random.random() - 0.5) * 0.4)
@@ -213,27 +300,12 @@ def _create_session(subject, session_number):
     offset = (0.5 - random.random()) * 0.2
     tau_i = TAU_I_0 + offset
     name = "pk_%d" % (((subject.number - 1) * 3) + session_number)
-    modeling = Modeling(name=name, fxl_k_trans=fxl_k_trans, fxr_k_trans=fxr_k_trans,
+    modeling = Modeling(name=name, image_container_name=reg.name,
+                        fxl_k_trans=fxl_k_trans, fxr_k_trans=fxr_k_trans,
                         v_e=v_e, tau_i=tau_i)
 
-    # Make the series list.
-    series = _create_all_series()
-
-    # Make the scan.
-    scan = _create_scan(subject, session_number)
-
-    # Make the registration.
-    registration = _create_registration(subject, session_number)
-
-    # Make the session detail.
-    sess_dtl = SessionDetail(bolus_arrival_index=arv, series=series, scan=scan,
-                             registrations=[registration])
-
-    # Save the detail.
-    sess_dtl.save()
-
     return Session(number=session_number, acquisition_date=date,
-                   modeling=modeling, detail=sess_dtl)
+                   modeling=[modeling], detail=detail)
 
 
 def _create_all_series():
@@ -311,4 +383,5 @@ def _create_intensity():
 
 
 if __name__ == "__main__":
+    connect(db='qiprofile_test')
     seed()

@@ -1,13 +1,27 @@
 from nose.tools import (assert_is_none, assert_is_instance,
                         assert_is_not_none, assert_true, assert_equal)
 from datetime import datetime
+from mongoengine import connect
+from mongoengine.connection import get_db
 from qiprofile_rest.models import Subject
 from qiprofile_rest.test.helpers import seed
 
-class TestSerializers(object):
+class TestSeed(object):
+    """
+    This TestSeed class tests the seed helper utility.
+
+    Note: this test drops the ``qiprofile-test`` Mongo database
+    at the beginning and end of execution.
+    """
     def setup(self):
+        connect(db='qiprofile_test')
+        self.db = get_db()
+        self.db.connection.drop_database('qiprofile_test')
         self._subjects = seed.seed()
-        
+
+    def tearDown(self):
+        self.db.connection.drop_database('qiprofile_test')
+
     def test_serialization(self):
         for saved_sbj in self._subjects:
             query = dict(project=saved_sbj.project,
@@ -24,7 +38,12 @@ class TestSerializers(object):
                                   (subject, len(sessions)))
         for session in sessions:
             self._validate_session(subject, session)
-        
+
+        treatments = subject.detail.treatments
+        assert_equal(len(treatments), 3,
+                     "%s session %d treatments count is incorrect: %d" %
+                     (subject, session.number, len(treatments)))
+
         encounters = subject.detail.encounters
         assert_equal(len(encounters), 2,
                      "%s session %d encounter count is incorrect: %d" %
@@ -33,20 +52,19 @@ class TestSerializers(object):
                       None)
         assert_is_not_none(biopsy, "%s session %d is missing a biopsy" %
                                    (subject, session.number))
-        assert_is_not_none(biopsy.id, "%s session %d biopsy is missing an id" %
-                                      (subject, session.number))
-        path = biopsy.outcome
-        assert_is_not_none(path, "%s biopsy is missing a pathology report" %
-                                 subject)
-        assert_is_not_none(biopsy.id, "%s biopsy pathology report is missing"
-                                      " an id" % subject)
-        # Uncomment to print the biopsy result.
-        # print "%s %s TNM: %s Estrogen: %d" % (subject, biopsy.encounter_type,
-        #                                       path.tnm.size, path.estrogen.quick_score)
-            
+        assert_equal(len(biopsy.outcomes), 1, "%s biopsy outcomes size is"
+                                              " incorrect" % subject)
+        path = biopsy.outcomes[0]
+        assert_is_not_none(path.tnm, "%s biopsy pathology report is missing"
+                                     " a TNM" % subject)
+        post_trt = next((enc for enc in encounters if enc.encounter_type == 'Assessment'),
+                      None)
+        assert_is_not_none(post_trt, "%s session %d is missing an assessment" %
+                                     (subject, session.number))
+        assert_equal(len(post_trt.outcomes), 1,
+                     "%s post-treatment assessment outcomes size is incorrect" % subject)
+
     def _validate_session(self, subject, session):
-        assert_is_not_none(session.id, "%s session %d is missing an id" %
-                                    (subject, session.number))
         assert_is_not_none(session.acquisition_date,
                            "%s session %d is missing an acquisition date" %
                            (subject, session.number))
@@ -55,58 +73,35 @@ class TestSerializers(object):
                            (subject, session.number, session.acquisition_date.__class__))
         assert_is_not_none(session.modeling, "%s session %d is missing modeling" %
                                           (subject, session.number))
-        assert_is_not_none(session.modeling.id, "%s session %d modeling is missing an id" %
-                                          (subject, session.number))
-        
-        # Uncomment to print the modeling parameters.
-        #mdl = session.modeling
-        #print ("%s Session %d %f %f %f" % 
-        #        (subject, session.number, mdl.delta_k_trans, mdl.v_e, mdl.tau_i))
-        
         assert_is_not_none(session.detail, "%s session %d is missing detail" %
                                         (subject, session.number))
         assert_is_not_none(session.detail.scan, "%s session %d is missing scans" %
                                              (subject, session.number))
-        assert_is_not_none(session.detail.scan.id, "%s session %d scan is missing an id"
-                                                " an id" % (subject, session.number))
-                    
+
         scan_intensity = session.detail.scan.intensity
         assert_is_not_none(scan_intensity, "%s session %d scan is missing an"
                                            " intensity" % (subject, session.number))
-        assert_is_none(scan_intensity.id, "%s session %d scan intensity incorrectly"
-                                          " has an id" % (subject, session.number))
-        # Uncomment to print the scan intensity values.
-        # print ("%s Session %d scan intensities:" % (subject, session.number))
-        # print map(float, scan_intensity.intensities)
-        
+
         assert_true(not not session.detail.registrations,
                "%s session %d registration is missing a registration" %
                (subject, session.number))
         reg = session.detail.registrations[0]
-        assert_is_not_none(reg.id, "%s session %d registration is missing"
-                                   " an id" % (subject, session.number))
         assert_equal(reg.name, "reg_%02d" % session.number,
                      "%s session %d registration name incorrect: %s" %
                      (subject, session.number, reg.name))
         assert_equal(reg.parameters, seed.REG_PARAMS,
                      "%s session %s %s parameters incorrect: %s" %
                      (subject, session.number, reg.name, reg.parameters))
-        
+
         reg_intensity = reg.intensity
         assert_is_not_none(reg.intensity,
                            "%s session %d registration is missing an intensity" %
                             (subject, session.number))
-        assert_is_none(reg.intensity.id,
-                       "%s session %d registration intensity incorrectly"
-                       " has an id" % (subject, session.number))
         # Verify that decimals are decoded as numbers.
         for value in reg_intensity.intensities:
             assert_true(isinstance(value, float),
                         "Float field type is incorrect for value %s: %s" %
                         (value, value.__class__))
-        # Uncomment to print the registration intensity values.
-        # print ("%s Session %d registration intensities:" % (subject, session.number))
-        # print map(float, reg_intensity.intensities)
 
 
 if __name__ == "__main__":
