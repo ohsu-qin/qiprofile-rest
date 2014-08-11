@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 (http://quip1:6060/qiprofile-rest) for change details.
 
+2.1.2 / 2014-08-11
+------------------
+* Add treatments to the data model.
+
 2.1.1 / 2014-07-17
 ------------------
 * Replace the Django REST Mongo framework with Eve.
