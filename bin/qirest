@@ -18,13 +18,24 @@ def main(argv=sys.argv):
     # Parse the command line arguments.
     opts = _parse_arguments()
     
+    # Set the environment.
+    env = opts.get('env', None)
+    if env:
+      os.environ['NODE_ENV'] = env
+    
     # Start the server.
     return subprocess.call(APP)
+
 
 
 def _parse_arguments():
     """Parses the command line arguments."""
     parser = argparse.ArgumentParser()
+    env_grp = parser.add_mutually_exclusive_group()
+    env_grp.add_argument('--production', help="Production environment (the default)",
+                         dest='env', action='store_const', const='production')
+    env_grp.add_argument('--development', help="Test environment",
+                         dest='env', action='store_const', const='development')
 
     args = vars(parser.parse_args())
     nonempty_args = dict((k, v) for k, v in args.iteritems() if v != None)
