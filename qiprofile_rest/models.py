@@ -295,8 +295,12 @@ class SarcomaPathology(Pathology):
 class TNM(Outcome):
     """The TNM tumor staging."""
 
-    class SizeField(fields.StringField):
+    class Size(mongoengine.EmbeddedDocument):
         """The TNM size field."""
+        
+        PREFIXES = ['c', 'p', 'y', 'r', 'a', 'u']
+        
+        SUFFIXES = ['a', 'b', 'c']
 
         SIZE_PAT = """
             ^(c|p|y|r|a|u)? # The prefix modifier
@@ -312,10 +316,33 @@ class TNM(Outcome):
         SIZE_REGEX = re.compile(SIZE_PAT, re.VERBOSE)
         """The TNM size validation regular expression."""
         
-        def validate(self, value, clean=True):
-            return not not TNM.SizeField.SIZE_REGEX.match(value)
+        prefix = fields.StringField(choices=PREFIXES)
+        
+        tumor_size = fields.IntField(choices=range(0, 5))
+        
+        in_situ = fields.BooleanField(default=False)
+        
+        suffix = fields.StringField(choices=SUFFIXES)
+        
+        def clean(self):
+            """
+            Peforms document-level validation.
+            
+            @raise ValidationError if the in_situ flag is set but there is a
+              tumor_size or suffix field
+            """
+            if self.in_situ:
+                if self.tumor_size != None:
+                    raise ValidationError("TNM Size with in_situ flag set to"
+                                          " True cannot have tumor_size %d" %
+                                          self.tumor_size)
+                if self.suffix != None:
+                    raise ValidationError("TNM Size with in_situ flag set to"
+                                          " True cannot have a suffix %s" %
+                                          self.suffix)
+            return True
 
-    size = SizeField(max_length=4)
+    size = fields.EmbeddedDocumentField(Size)
     
     lymph_status = fields.IntField(choices=range(0, 4))
     

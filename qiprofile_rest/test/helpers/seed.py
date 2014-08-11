@@ -178,13 +178,15 @@ def _create_breast_pathology():
     # The estrogen status.
     quick_score = int(random.random() * 10)
     intensity = int(random.random() * 100)
-    estrogen = HormoneReceptorStatus(positive=True, quick_score=quick_score,
+    estrogen = HormoneReceptorStatus(positive=True,
+                                     quick_score=quick_score,
                                      intensity=intensity)
 
     # The progestrogen status.
     quick_score = int(random.random() * 10)
     intensity = int(random.random() * 100)
-    progestrogen = HormoneReceptorStatus(positive=True, quick_score=quick_score,
+    progestrogen = HormoneReceptorStatus(positive=True,
+                                         quick_score=quick_score,
                                          intensity=intensity)
 
     # HER2 NEU IHC is one of 0, 1, 2, 3.
@@ -199,7 +201,7 @@ def _create_breast_pathology():
     # KI67 is a percent.
     ki_67 = int(random.random() * 100)
 
-    return BreastPathology(tnm=tnm, #estrogen=estrogen,
+    return BreastPathology(tnm=tnm, estrogen=estrogen,
                            progestrogen=progestrogen,
                            her2_neu_ihc=her2_neu_ihc,
                            her2_neu_fish=her2_neu_fish,
@@ -237,9 +239,9 @@ def _create_tnm(collection):
         grade = _create_sarcoma_grade()
     else:
         raise ValueError("Collection type not recognized: %s" % collection)
-    size = "pT%d" % (int(random.random() * 3) + 2)
+    size = TNM.Size(prefix='p', tumor_size=int(random.random() * 3) + 2)
     lymph_status = int(random.random() * 4)
-    
+
     return TNM(grade=grade, size=size, lymph_status=lymph_status,
                metastasis=False, lymphatic_vessel_invasion=False)
 
