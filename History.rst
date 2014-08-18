@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 (http://quip1:6060/qiprofile-rest) for change details.
 
+2.1.4 / 2014-08-18
+------------------
+* Encounter outcomes are optional.
+
 2.1.3 / 2014-08-11
 ------------------
 * Break out TNM size scores in the data model.
