@@ -4,6 +4,7 @@ from datetime import datetime
 import pytz
 import random
 import math
+from decimal import Decimal
 from mongoengine import connect
 from qiprofile_rest import choices
 from qiprofile_rest.models import (Subject, SubjectDetail, Session, SessionDetail,
@@ -131,27 +132,31 @@ def _create_subject_detail(subject):
     birth_date = datetime(yr, 7, 7, tzinfo=pytz.utc)
     races = [choices.RACE_CHOICES[int(len(choices.RACE_CHOICES) * random.random())][0]]
 
-    # The biopsy encounter.
-    biopsy_date = DATE_0.replace(year=2012, month=10)
+    # The biopsy has a pathology report.
+    biopsy_date = DATE_0.replace(month=6)
     biopsy_path = _create_pathology(subject.collection)
     biopsy = Encounter(encounter_type='Biopsy', date=biopsy_date, outcomes=[biopsy_path])
-    # The assessment encounter.
+
+    # The surgery doesn't have an outcome.
+    surgery_date = DATE_0.replace(month=9)
+    surgery = Encounter(encounter_type='Surgery', date=surgery_date)
+
+    # The post-surgery assessment has a TNM.
     assessment_date = DATE_0.replace(month=10)
     assessment_tnm = _create_tnm(subject.collection)
     assessment = Encounter(encounter_type='Assessment', date=assessment_date,
-                               outcomes=[assessment_tnm])
-    encounters = [biopsy, assessment]
+                           outcomes=[assessment_tnm])
+    encounters = [biopsy, surgery, assessment]
 
     # The treatments.
     neo_tx = Treatment(treatment_type='Neoadjuvant',
                            begin_date=DATE_0.replace(month=5),
-                           end_date=DATE_0.replace(month=11))
-    primary_tx_date = DATE_0.replace(year=2014, month=1)
-    primary_tx = Treatment(treatment_type='Primary', begin_date=primary_tx_date,
-                           end_date=primary_tx_date)
+                           end_date=DATE_0.replace(month=7))
+    primary_tx = Treatment(treatment_type='Primary', begin_date=surgery_date,
+                           end_date=surgery_date)
     adj_tx = Treatment(treatment_type='Adjuvant',
-                       begin_date=primary_tx_date.replace(month=2),
-                       end_date=primary_tx_date.replace(month=5))
+                       begin_date=surgery_date.replace(month=10),
+                       end_date=surgery_date.replace(month=11))
     treatments = [neo_tx, primary_tx, adj_tx]
 
     # Make the sessions.
@@ -176,30 +181,29 @@ def _create_breast_pathology():
     tnm = _create_tnm('Breast')
 
     # The estrogen status.
-    quick_score = int(random.random() * 10)
-    intensity = int(random.random() * 100)
-    estrogen = HormoneReceptorStatus(positive=True,
+    positive = _random_boolean()
+    quick_score = _random_int(0, 8)
+    intensity = _random_int(0, 100)
+    estrogen = HormoneReceptorStatus(positive=positive,
                                      quick_score=quick_score,
                                      intensity=intensity)
 
     # The progestrogen status.
-    quick_score = int(random.random() * 10)
-    intensity = int(random.random() * 100)
-    progestrogen = HormoneReceptorStatus(positive=True,
+    positive = _random_boolean()
+    quick_score = _random_int(0, 8)
+    intensity = _random_int(0, 100)
+    progestrogen = HormoneReceptorStatus(positive=positive,
                                          quick_score=quick_score,
                                          intensity=intensity)
 
     # HER2 NEU IHC is one of 0, 1, 2, 3.
-    her2_neu_ihc = int(random.random() * 4)
-    
+    her2_neu_ihc = _random_int(0, 3)
+
     # HER2 NEU FISH is True (positive) or False (negative).
-    if int(random.random() * 2):
-        her2_neu_fish = True
-    else:
-        her2_neu_fish = False
-    
+    her2_neu_fish = _random_boolean()
+
     # KI67 is a percent.
-    ki_67 = int(random.random() * 100)
+    ki_67 = _random_int(0, 100)
 
     return BreastPathology(tnm=tnm, estrogen=estrogen,
                            progestrogen=progestrogen,
@@ -216,11 +220,11 @@ def _create_sarcoma_pathology():
     site = 'Thigh'
 
     # The necrosis percent is either a value or a decile range.
-    if int(random.random() * 2):
-        value = int(random.random() * 100)
+    if _random_boolean():
+        value = _random_int(0, 100)
         necrosis_pct = NecrosisPercentValue(value=value)
     else:
-        low = int(random.random() * 10) * 10
+        low = _random_int(0, 9) * 10
         start = NecrosisPercentRange.LowerBound(value=low)
         stop = NecrosisPercentRange.UpperBound(value=low+10)
         necrosis_pct = NecrosisPercentRange(start=start, stop=stop)
@@ -239,21 +243,23 @@ def _create_tnm(collection):
         grade = _create_sarcoma_grade()
     else:
         raise ValueError("Collection type not recognized: %s" % collection)
-    size = TNM.Size(prefix='p', tumor_size=int(random.random() * 3) + 2)
-    lymph_status = int(random.random() * 4)
+    size = TNM.Size(prefix='p', tumor_size=_random_int(1, 4))
+    lymph_status = _random_int(0, 3)
+    metastasis = _random_boolean()
+    invasion = _random_boolean()
 
     return TNM(grade=grade, size=size, lymph_status=lymph_status,
-               metastasis=False, lymphatic_vessel_invasion=False)
+               metastasis=metastasis, lymphatic_vessel_invasion=invasion)
 
 
 def _create_breast_grade():
     """
     @return the Nottingham grade
     """
-    tubular_formation = int(random.random() * 4) + 1
-    nuclear_pleomorphism = int(random.random() * 4) + 1
-    mitotic_count = int(random.random() * 4) + 1
-    
+    tubular_formation = _random_int(1, 3)
+    nuclear_pleomorphism = _random_int(1, 3)
+    mitotic_count = _random_int(1, 3)
+
     return NottinghamGrade(tubular_formation=tubular_formation,
                                  nuclear_pleomorphism=nuclear_pleomorphism,
                                  mitotic_count=mitotic_count)
@@ -263,10 +269,10 @@ def _create_sarcoma_grade():
     """
     @return the FNCLCC grade
     """
-    differentiation = int(random.random() * 3) + 1
-    mitotic_count = int(random.random() * 3) + 1
-    necrosis = int(random.random() * 3)
-    
+    differentiation = _random_int(1, 3)
+    mitotic_count = _random_int(1, 3)
+    necrosis = _random_int(0, 2)
+
     return FNCLCCGrade(differentiation=differentiation, mitotic_count=mitotic_count,
                        necrosis=necrosis)
 
@@ -319,7 +325,7 @@ def _create_scan(subject, session_number):
     files = _files_for(subject, session_number)
     intensity = _create_intensity()
     # Add a motion artifact.
-    start = 12 + int(random.random() * 5)
+    start = 12 + _random_int(0, 5)
     for i in range(start, start + 5):
         intensity.intensities[i] -= random.random() * 8
 
@@ -370,7 +376,7 @@ def _resource_filename(subject, session_number, resource, time_point):
 
 def _create_intensity():
     # Ramp intensity up logarithmically until bolus arrival.
-    intensities = [(math.log(i) * 20) + (random.random() * 5) 
+    intensities = [(math.log(i) * 20) + (random.random() * 5)
                    for i in range(1, 7)]
     arv_intensity = intensities[5]
     # Tail intensity off inverse exponentially thereafter.
@@ -382,6 +388,25 @@ def _create_intensity():
         intensities.append(intensity)
 
     return Intensity(intensities=intensities)
+
+
+def _random_int(low, high):
+    """
+    @param low the inclusive minimum value
+    @param high the inclusive maximum value
+    @return a random integer in the inclusive [low, high] range
+    """
+    return Decimal(random.random() * (high - low)).to_integral_value() + low
+
+
+def _random_boolean():
+    """
+    @return a random True or False value
+    """
+    if _random_int(0, 1):
+        return True
+    else:
+        return False
 
 
 if __name__ == "__main__":
