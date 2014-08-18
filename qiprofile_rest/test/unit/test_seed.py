@@ -29,7 +29,7 @@ class TestSeed(object):
                          number=saved_sbj.number)
             fetched_sbj = Subject.objects.get(**query)
             self._validate_subject(fetched_sbj)
-
+ 
     def _validate_subject(self, subject):
         assert_is_not_none(subject.detail, "%s is missing detail" % subject)
         assert_is_not_none(subject.detail.sessions, "%s has no sessions" % subject)
@@ -45,7 +45,7 @@ class TestSeed(object):
                      (subject, session.number, len(treatments)))
 
         encounters = subject.detail.encounters
-        assert_equal(len(encounters), 2,
+        assert_equal(len(encounters), 3,
                      "%s session %d encounter count is incorrect: %d" %
                      (subject, session.number, len(encounters)))
         biopsy = next((enc for enc in encounters if enc.encounter_type == 'Biopsy'),
@@ -57,6 +57,12 @@ class TestSeed(object):
         path = biopsy.outcomes[0]
         assert_is_not_none(path.tnm, "%s biopsy pathology report is missing"
                                      " a TNM" % subject)
+        surgery = next((enc for enc in encounters if enc.encounter_type == 'Surgery'),
+                      None)
+        assert_is_not_none(surgery, "%s session %d is missing a surgery" %
+                                     (subject, session.number))
+        assert_equal(len(surgery.outcomes), 0,
+                     "%s surgery incorrectly has an outcome" % subject)
         post_trt = next((enc for enc in encounters if enc.encounter_type == 'Assessment'),
                       None)
         assert_is_not_none(post_trt, "%s session %d is missing an assessment" %
