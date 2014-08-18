@@ -302,12 +302,12 @@ class TNM(Outcome):
         SUFFIXES = ['a', 'b', 'c']
 
         SIZE_PAT = """
-            ^(c|p|y|r|a|u)? # The prefix modifier
-            T               # The size designator
-            (x |            # Tumor cannot be evaluated
-             is |           # Carcinoma in situ
-             ((0|1|2|3|4)   # The size
-              (a|b|c)?      # The suffix modifier
+            ^(?P<prefix>c|p|y|r|a|u)?   # The prefix modifier
+            T                           # The size designator
+            (x |                        # Tumor cannot be evaluated
+             (?P<in_situ>is) |          # Carcinoma in situ
+             ((?P<tumor_size>0|1|2|3|4) # The size
+              (?P<suffix>a|b|c)?        # The suffix modifier
              )
             )$
         """
@@ -322,6 +322,29 @@ class TNM(Outcome):
         in_situ = fields.BooleanField(default=False)
 
         suffix = fields.StringField(choices=SUFFIXES)
+
+        def __str__(self):
+            prefix = self.prefix or ''
+            suffix = self.suffix or ''
+            if self.in_situ:
+                size = 'is'
+            elif self.tumor_size:
+                size = str(self.tumor_size)
+            else:
+                size = 'x'
+            
+            return "%sT%s%s" % (prefix, size, suffix)
+        
+        @classmethod
+        def parse(klass, value):
+          """
+          Parses the given string into a new Size.
+          
+          @param value the input string
+          @return the new Size object
+          """
+          match = klass.SIZE_REGEX.match(value)
+          return klass(**match.groupdict())
 
         def clean(self):
             """
