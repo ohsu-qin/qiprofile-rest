@@ -29,20 +29,20 @@ class Subject(mongoengine.Document):
     meta = dict(collection='qiprofile_subject')
 
     project = fields.StringField(default='QIN')
-    
+
     collection = fields.StringField(required=True)
-    
+
     number = fields.IntField(required=True)
-    
+
     detail = fields.ReferenceField('SubjectDetail')
 
     @classmethod
     def pre_delete(cls, sender, document, **kwargs):
         """Cascade delete this Session's detail."""
-        
+
         if self.detail:
             self.detail.delete()
-        
+
     def __str__(self):
         return ("%s %s Subject %d" %
                 (self.project, self.collection, self.number))
@@ -59,24 +59,24 @@ class SubjectDetail(mongoengine.Document):
     meta = dict(collection='qiprofile_subject_detail')
 
     birth_date = fields.DateTimeField()
-    
+
     races = fields.ListField(
         fields.StringField(max_length=choices.max_length(choices.RACE_CHOICES),
                            choices=choices.RACE_CHOICES))
-    
+
     ethnicity = fields.StringField(
         max_length=choices.max_length(choices.ETHNICITY_CHOICES),
         choices=choices.ETHNICITY_CHOICES)
-    
+
     sessions = fields.ListField(field=fields.EmbeddedDocumentField('Session'))
-    
+
     treatments = fields.ListField(field=fields.EmbeddedDocumentField('Treatment'))
-    
+
     encounters = fields.ListField(field=fields.EmbeddedDocumentField('Encounter'))
 
     def pre_delete(cls, sender, document, **kwargs):
         """Cascade delete this SubjectDetail's sessions."""
-        
+
         for sess in self.sessions:
             sess.delete()
 
@@ -85,20 +85,20 @@ class Session(mongoengine.EmbeddedDocument):
     """The MR session (a.k.a. *study* in DICOM terminology)."""
 
     number = fields.IntField(required=True)
-    
+
     acquisition_date = fields.DateTimeField()
-    
+
     modeling = fields.ListField(field=mongoengine.EmbeddedDocumentField('Modeling'))
-    
+
     detail = fields.ReferenceField('SessionDetail')
 
     @classmethod
     def pre_delete(cls, sender, document, **kwargs):
         """Cascade delete this Session's detail."""
-        
+
         if self.detail:
             self.detail.delete()
-        
+
 signals.pre_delete.connect(Session.pre_delete, sender=Session)
 
 
@@ -115,20 +115,20 @@ class Modeling(mongoengine.EmbeddedDocument):
     """The modeling resource name, e.g. ``pk_R3y9``."""
 
     fxl_k_trans = fields.FloatField()
-    
+
     fxr_k_trans = fields.FloatField()
-    
+
     v_e = fields.FloatField()
-    
+
     tau_i = fields.FloatField()
-    
+
     image_container_name = fields.StringField(required=True)
     """
     The image container name, e.g. ``scan`` or ``reg_3Ju7.
     This is not a MongoDB ObjectID reference to an ImageContainer,
     since ImageContainer is embedded in the SessionDetail.
     """
-    
+
     parameters = fields.DictField()
     """The modeling execution input parameters."""
 
@@ -138,11 +138,11 @@ class Modeling(mongoengine.EmbeddedDocument):
 
 class ImageContainer(mongoengine.EmbeddedDocument):
     """The patient scan or registration."""
-    
+
     meta = dict(allow_inheritance=True)
 
     files = fields.ListField(field=fields.StringField())
-    
+
     # TODO - is there a use case for several intensity measures
     # per container?
     intensity = fields.EmbeddedDocumentField('Intensity')
@@ -161,7 +161,7 @@ class Registration(ImageContainer):
 
     name = fields.StringField(required=True)
     """The registration resource name, e.g. ``reg_k3RtZ``."""
-    
+
     parameters = fields.DictField()
 
 
@@ -169,7 +169,7 @@ class Intensity(mongoengine.EmbeddedDocument):
     """The image signal intensities for a given probe."""
 
     probe = fields.EmbeddedDocumentField('Probe')
-    
+
     intensities = fields.ListField(field=fields.FloatField())
     """The list of series intensities."""
 
@@ -179,7 +179,7 @@ class Probe(mongoengine.EmbeddedDocument):
 
     description = fields.StringField()
     """The short description, e.g. ``ROI centroid``"""
-    
+
     location = fields.ListField(field=fields.FloatField())
     """The (x, y, z) probe coordinates"""
 
@@ -190,11 +190,11 @@ class SessionDetail(mongoengine.Document):
     meta = dict(collection='qiprofile_session_detail')
 
     bolus_arrival_index = fields.IntField()
-    
+
     series = fields.ListField(field=fields.EmbeddedDocumentField('Series'))
-    
+
     scan = fields.EmbeddedDocumentField('Scan')
-    
+
     registrations = fields.ListField(
         field=fields.EmbeddedDocumentField('Registration')
     )
@@ -213,40 +213,39 @@ class Treatment(mongoengine.EmbeddedDocument):
     """The patient therapy, e.g. adjuvant."""
 
     TYPE_CHOICES = ('Neoadjuvant', 'Primary', 'Adjuvant')
-    
+
     treatment_type = fields.StringField(
         max_length=choices.max_length(TYPE_CHOICES),
         choices=TYPE_CHOICES)
-    
+
     begin_date = fields.DateTimeField(required=True)
-    
+
     end_date = fields.DateTimeField(required=True)
 
 
 class Encounter(mongoengine.EmbeddedDocument):
     """The patient clinical encounter, e.g. biopsy."""
-    
+
     TYPE_CHOICES = ('Assessment', 'Biopsy', 'Surgery')
-    
+
     encounter_type = fields.StringField(
         max_length=choices.max_length(TYPE_CHOICES),
         choices=TYPE_CHOICES)
-    
+
     date = fields.DateTimeField(required=True)
-    
-    outcomes = fields.ListField(fields.EmbeddedDocumentField('Outcome'),
-                                required=True)
+
+    outcomes = fields.ListField(fields.EmbeddedDocumentField('Outcome'))
 
 
 class Outcome(mongoengine.EmbeddedDocument):
     """The patient clinical outcome."""
-    
+
     meta = dict(allow_inheritance=True)
 
 
 class Pathology(Outcome):
     """The patient pathology summary."""
-    
+
     meta = dict(allow_inheritance=True)
 
     tnm = fields.EmbeddedDocumentField('TNM')
@@ -263,13 +262,13 @@ class BreastPathology(Pathology):
             return value > 0 and value <= 100
 
     estrogen = fields.EmbeddedDocumentField('HormoneReceptorStatus')
-    
+
     progestrogen = fields.EmbeddedDocumentField('HormoneReceptorStatus')
-    
+
     her2_neu_ihc = fields.IntField(choices=HER2_NEU_IHC_CHOICES)
-    
+
     her2_neu_fish = fields.BooleanField(choices=choices.POS_NEG_CHOICES)
-    
+
     ki_67 = KI67Field()
 
 
@@ -282,9 +281,9 @@ class SarcomaPathology(Pathology):
                          'Osteosarcoma', 'Rhabdomyosarcoma', 'Synovial', 'Other')
 
     site = fields.StringField()
-    
+
     necrosis_pct = fields.EmbeddedDocumentField('NecrosisPercent')
-    
+
     histology = fields.StringField(
         max_length=choices.max_length(HISTOLOGY_CHOICES),
         choices=HISTOLOGY_CHOICES)
@@ -297,9 +296,9 @@ class TNM(Outcome):
 
     class Size(mongoengine.EmbeddedDocument):
         """The TNM size field."""
-        
+
         PREFIXES = ['c', 'p', 'y', 'r', 'a', 'u']
-        
+
         SUFFIXES = ['a', 'b', 'c']
 
         SIZE_PAT = """
@@ -315,19 +314,19 @@ class TNM(Outcome):
 
         SIZE_REGEX = re.compile(SIZE_PAT, re.VERBOSE)
         """The TNM size validation regular expression."""
-        
+
         prefix = fields.StringField(choices=PREFIXES)
-        
+
         tumor_size = fields.IntField(choices=range(0, 5))
-        
+
         in_situ = fields.BooleanField(default=False)
-        
+
         suffix = fields.StringField(choices=SUFFIXES)
-        
+
         def clean(self):
             """
             Peforms document-level validation.
-            
+
             @raise ValidationError if the in_situ flag is set but there is a
               tumor_size or suffix field
             """
@@ -343,19 +342,19 @@ class TNM(Outcome):
             return True
 
     size = fields.EmbeddedDocumentField(Size)
-    
+
     lymph_status = fields.IntField(choices=range(0, 4))
-    
+
     metastasis = fields.BooleanField(choices=choices.POS_NEG_CHOICES)
-    
+
     grade = fields.EmbeddedDocumentField('Grade')
-    
+
     serum_tumor_markers = fields.IntField(choices=range(0, 4))
-    
+
     resection_boundaries = fields.IntField(choices=range(0, 3))
-    
+
     lymphatic_vessel_invasion = fields.BooleanField()
-    
+
     vein_invasion = fields.IntField(choices=range(0, 3))
 
 
@@ -373,7 +372,7 @@ class Grade(Outcome):
 class NottinghamGrade(Grade):
     """The Nottingham breast tumor grade."""
 
-    COMPONENT_CHOICES = range(1, 5)
+    COMPONENT_CHOICES = range(1, 4)
 
     tubular_formation = fields.IntField(choices=COMPONENT_CHOICES)
     nuclear_pleomorphism = fields.IntField(choices=COMPONENT_CHOICES)
@@ -388,9 +387,9 @@ class HormoneReceptorStatus(Outcome):
             return value > 0 and value <= 100
 
     positive = fields.BooleanField(choices=choices.POS_NEG_CHOICES)
-    
+
     quick_score = fields.IntField(choices=range(0, 9))
-    
+
     intensity = IntensityField()
 
 
@@ -398,9 +397,9 @@ class FNCLCCGrade(Grade):
     """The FNCLCC sarcoma tumor grade."""
 
     differentiation = fields.IntField(choices=range(1, 4))
-    
+
     mitotic_count = fields.IntField(choices=range(1, 4))
-    
+
     necrosis = fields.IntField(choices=range(0, 3))
 
 
@@ -411,7 +410,7 @@ class NecrosisPercent(Outcome):
 
 class NecrosisPercentValue(NecrosisPercent):
     """The necrosis percent absolute value."""
-    
+
     value = fields.IntField(choices=range(0, 101))
 
 
@@ -429,18 +428,18 @@ class NecrosisPercentRange(NecrosisPercent):
 
         value = fields.IntField(choices=range(0, 101))
 
-    
+
     class LowerBound(Bound):
         """Necrosis percent lower bound."""
 
         inclusive = fields.BooleanField(default=True)
 
-    
+
     class UpperBound(Bound):
         """Necrosis percent upper bound."""
 
         inclusive = fields.BooleanField(default=False)
-    
+
     start = fields.EmbeddedDocumentField(LowerBound)
-    
+
     stop = fields.EmbeddedDocumentField(UpperBound)
