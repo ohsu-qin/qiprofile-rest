@@ -8,12 +8,10 @@ from qiprofile_rest.models import *
 class TestModel(object):
     def setup(self):
         connect(db='qiprofile_test')
-        self.db = get_db()
+        self.db.connection.drop_database('qiprofile_test')
     
     def tearDown(self):
-        for collection in self.db.collection_names():
-            if not collection.startswith('system.'):
-                self.db.drop_collection(collection)
+      self.db.connection.drop_database('qiprofile_test')
 
     def test_subject(self):
         subject = Subject(number=1)
@@ -57,24 +55,19 @@ class TestModel(object):
         date = datetime(2013, 1, 4, tzinfo=pytz.utc)
         encounter = Encounter(encounter_type='Biopsy', date=date)
         detail.encounters = [encounter]
-        # The encounter must have an outcome.
-        with assert_raises(ValidationError):
-            detail.save()
-        
+        # The encounter outcome is optional.
+        detail.save()
         # Add the outcome.
         outcome = TNM()
         encounter.outcomes = [outcome]
-        # The detail is now valid.
         detail.save()
 
     def test_tnm_size(self):
-       field = TNM.SizeField()
-       for value in ['T1', 'Tx', 'cT4', 'T1b', 'cT2a']:
-           assert_true(field.validate(value),
-                       "Valid TNM size value not validated: %s" % value)
-       for value in ['Tz', 'T', '4', 'cT4d']:
-           assert_false(field.validate(value),
-                        "Invalid TNM size value was validated: %s" % value)
+        for value in ['T1', 'Tx', 'cT4', 'T1b', 'cT2a']:
+            size = TNM.Size.parse(value)
+            assert_equal(str(size), value, "TNM parse incorrect -"
+                                           " expected %s, found %s"
+                                           % (value, str(size)))
 
     def test_session(self):
         detail = SubjectDetail(collection='Breast', number=1)
