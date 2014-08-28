@@ -55,19 +55,23 @@ REG_PARAMS = dict(
 
 def seed():
     """
-    :Note: this is a destructive operation. Existing objects are deleted
-    from the database.
-
+    Populates the MongoDB database named ``qiprofile_test`` with
+    three subjects each of the ``Breast`` and ``Sarcoma`` collection.
+    
+    Note: existing subjects are not modified. In order to refresh the
+    seed subjects, drop the ``qiprofile_test`` database first.
+    
+    
     @return: three :obj:`PROJECT` subjects for each collection in
         :obj:`COLLECTIONS`
     """
     # Initialize the pseudo-random generator.
     random.seed()
     # Make the subjects.
-    # Note: itertools chain on a generator iterates over
-    # the collections in python 1.7.1, but not python 1.7.2.
-    # The work-around is to build the subject collection
-    # in the for loop below.
+    # Note: itertools chain on a generator is preferable to iterate over
+    # the collections. This works in python 1.7.1, but not python 1.7.2.
+    # The work-around is to build up the subject collection in the for
+    # loop below.
     coll_sbjs = []
     for coll in COLLECTIONS:
         coll_sbjs.extend(_seed_collection(coll))
@@ -285,13 +289,13 @@ def _create_session(subject, session_number):
     date = DATE_0.replace(month=mo, day=day)
 
     # The bolus arrival.
-    arv = round((0.5 - random.random()) * 4) + AVG_BOLUS_ARRIVAL_NDX
+    arv = int(round((0.5 - random.random()) * 4)) + AVG_BOLUS_ARRIVAL_NDX
     # Make the series list.
-    series = _create_all_series()
+    series = _create_all_series(subject.collection)
     # Make the scan.
-    scan = _create_scan(subject, session_number)
+    scan = _create_scan(subject, session_number, series, arv)
     # Make the registration.
-    reg = _create_registration(subject, session_number)
+    reg = _create_registration(subject, session_number, series, arv)
     # Make the session detail.
     detail = SessionDetail(bolus_arrival_index=arv, series=series, scan=scan,
                            registrations=[reg])
@@ -316,14 +320,25 @@ def _create_session(subject, session_number):
                    modeling=[modeling], detail=detail)
 
 
-def _create_all_series():
-    # @returns an array of 32 Series objects with numbers 7, 9, ...
-    return [Series(number=7 + (2 * i)) for i in range(0,32)]
+BREAST_SERIES_NUMBERS = [7, 8] + [11 + 2*n for n in range(0, 30)]
+
+SARCOMA_SERIES_NUMBERS = [10, 11] + [14 + 2*n for n in range(0, 43)] + [101 + 2*n for n in range(0, 10)]
+
+SERIES_NUMBERS = dict(
+    Breast=BREAST_SERIES_NUMBERS,
+    Sarcoma=SARCOMA_SERIES_NUMBERS
+)
 
 
-def _create_scan(subject, session_number):
-    files = _files_for(subject, session_number)
-    intensity = _create_intensity()
+def _create_all_series(collection):
+    # @param collection the Breast or Sarcoma collection
+    # @returns an array of series objects
+    return [Series(number=number) for number in SERIES_NUMBERS[collection]]
+
+
+def _create_scan(subject, session_number, series, bolus_arrival_index):
+    files = _create_scan_filenames(subject, session_number, series)
+    intensity = _create_intensity(len(series), bolus_arrival_index)
     # Add a motion artifact.
     start = 12 + _random_int(0, 5)
     for i in range(start, start + 5):
@@ -332,55 +347,86 @@ def _create_scan(subject, session_number):
     return Scan(files=files, intensity=intensity)
 
 
-def _create_registration(subject, session_number):
+def _create_registration(subject, session_number, series, bolus_arrival_index):
     resource = "reg_%02d" % session_number
-    files = _files_for(subject, session_number, resource)
-    intensity = _create_intensity()
+    files = _create_resource_filenames(subject, session_number, resource, series)
+    intensity = _create_intensity(len(series), bolus_arrival_index)
 
     return Registration(name=resource, files=files, intensity=intensity,
                         parameters=REG_PARAMS)
 
 
-def _files_for(subject, session_number, resource=None):
-    # Creates the test file names. If there is a resource, then
-    # the image file container is that resource. Otherwise, the
-    # the image file container is ``scan``.
+def _create_scan_filenames(subject, session_number, series):
+    # Creates the file names for the given session. The file is
+    # name is given as:
     #
-    # Examples:
-    # * data/QIN_Test/Breast003/Session02/scan/2/series02.nii.gz
-    # * data/QIN_Test/Sarcoma003/Session02/resource/reg_AuX4d/series27.nii.gz
+    #     ``data``/<project>/<subject>/<session>/``scan``/<number>/``series``<number>``.nii.gz``
     #
-    # @return an array of 32 file names
-    if resource:
-        create_filename = lambda time_point: _resource_filename(subject, session_number, resource, time_point)
-    else:
-        create_filename = lambda time_point: _scan_filename(subject, session_number, time_point)
+    # e.g.::
+    #
+    #     data/QIN_Test/Breast003/Session02/scan/2/series002.nii.gz
+    # * data/QIN_Test/Sarcoma003/Session02/resource/reg_AuX4d/series027.nii.gz
+    #
+    # @param subject the parent subject
+    # @param session_number the session number
+    # @param series the series array
+    # @return the file name array
+    return [_scan_filename(subject, session_number, series.number)
+            for series in series]
 
-    return [create_filename(time_point) for time_point in range(1,33)]
+
+def _create_resource_filenames(subject, session_number, resource, series):
+    # Creates the file names for the given resource. The file is
+    # name is given as:
+    #
+    #     ``data``/<project>/<subject>/<session>/``resource``/<resource>/``series``<number>``.nii.gz``
+    #
+    # e.g.::
+    #
+    #     data/QIN_Test/Sarcoma003/Session02/resource/reg_AuX4d/series027.nii.gz
+    #
+    # @param subject the parent subject
+    # @param session_number the session number
+    # @param resource the resource name
+    # @param series the series array
+    # @return the file name array
+    return [_resource_filename(subject, session_number, resource, series.number)
+            for series in series]
+
 
 SESSION_TMPL = "data/%s/%s%03d/Session%02d/"
-FILE_TMPL = "series%02d.nii.gz"
+
+FILE_TMPL = "series%03d.nii.gz"
+
 SCAN_TMPL = SESSION_TMPL + "scan/%d/" + FILE_TMPL
+
 RESOURCE_TMPL = SESSION_TMPL + "resource/%s/" + FILE_TMPL
 
 
-def _scan_filename(subject, session_number, time_point):
+def _scan_filename(subject, session_number, series_number):
     return SCAN_TMPL % (subject.project, subject.collection, subject.number,
-                        session_number, time_point, time_point)
+                        session_number, series_number, series_number)
 
 
-def _resource_filename(subject, session_number, resource, time_point):
+def _resource_filename(subject, session_number, resource, series_number):
     return RESOURCE_TMPL % (subject.project, subject.collection,
-                            subject.number, session_number, resource, time_point)
+                            subject.number, session_number, resource, series_number)
 
 
-def _create_intensity():
-    # Ramp intensity up logarithmically until bolus arrival.
+def _create_intensity(count, bolus_arrival_index):
+    """
+    @param count the number of time points
+    @param bolus_arrival_index the bolus arrival series index
+    @return the Intensity object
+    """
+    # Ramp intensity up logarithmically until two time points after
+    # bolus arrival.
+    top = bolus_arrival_index + 2
     intensities = [(math.log(i) * 20) + (random.random() * 5)
-                   for i in range(1, 7)]
-    arv_intensity = intensities[5]
+                   for i in range(1, top + 2)]
+    arv_intensity = intensities[top]
     # Tail intensity off inverse exponentially thereafter.
-    for i in range(1, 27):
+    for i in range(1, count - top):
         # A negative exponential declining factor.
         factor = math.exp(-2 * (float(i)/25))
         # The signal intensity.
