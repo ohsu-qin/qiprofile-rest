@@ -1,6 +1,14 @@
 This history lists major release themes. See the GitHub commits
 (http://quip1:6060/qiprofile-rest) for change details.
 
+2.1.5 / 2014-08-28
+------------------
+* Accurately reflect the XNAT series numbers and file names.
+
+2.1.4 / 2014-08-18
+------------------
+* Encounter outcomes are optional.
+
 2.1.4 / 2014-08-18
 ------------------
 * Encounter outcomes are optional.
