@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import os
-from datetime import datetime
+from datetime import (datetime, timedelta)
 import pytz
 import random
 import math
@@ -136,35 +136,48 @@ def _create_subject_detail(subject):
     birth_date = datetime(yr, 7, 7, tzinfo=pytz.utc)
     races = [choices.RACE_CHOICES[int(len(choices.RACE_CHOICES) * random.random())][0]]
 
+    # Make the sessions.
+    sessions = [_create_session(subject, sess_nbr) for sess_nbr in range(1, 5)]
+
+    # The biopsy is after the first visit.
+    offset = int(random.random() * 30)
+    biopsy_date = sessions[0].acquisition_date + timedelta(days=offset)
+    
     # The biopsy has a pathology report.
-    biopsy_date = DATE_0.replace(month=6)
     biopsy_path = _create_pathology(subject.collection)
     biopsy = Encounter(encounter_type='Biopsy', date=biopsy_date, outcomes=[biopsy_path])
 
+    # The surgery is after the penultimate visit.
+    offset = int(random.random() * 30)
+    surgery_date = sessions[-2].acquisition_date + timedelta(days=offset)
     # The surgery doesn't have an outcome.
-    surgery_date = DATE_0.replace(month=9)
     surgery = Encounter(encounter_type='Surgery', date=surgery_date)
 
+    # The post-surgery assessment.
+    offset = 3 +int(random.random() * 20)
+    assessment_date = surgery_date + timedelta(days=offset)
     # The post-surgery assessment has a TNM.
-    assessment_date = DATE_0.replace(month=10)
     assessment_tnm = _create_tnm(subject.collection)
     assessment = Encounter(encounter_type='Assessment', date=assessment_date,
                            outcomes=[assessment_tnm])
     encounters = [biopsy, surgery, assessment]
 
     # The treatments.
-    neo_tx = Treatment(treatment_type='Neoadjuvant',
-                           begin_date=DATE_0.replace(month=5),
-                           end_date=DATE_0.replace(month=7))
+    offset = 20 + int(random.random() * 10)
+    neo_tx_begin = surgery_date - timedelta(days=offset)
+    offset = int(random.random() * 10)
+    neo_tx_end = surgery_date - timedelta(days=offset)
+    neo_tx = Treatment(treatment_type='Neoadjuvant', begin_date=neo_tx_begin,
+                           end_date=neo_tx_end)
     primary_tx = Treatment(treatment_type='Primary', begin_date=surgery_date,
                            end_date=surgery_date)
-    adj_tx = Treatment(treatment_type='Adjuvant',
-                       begin_date=surgery_date.replace(month=10),
-                       end_date=surgery_date.replace(month=11))
+    offset = int(random.random() * 10)
+    adj_tx_begin = surgery_date + timedelta(days=offset)
+    offset = int(random.random() * 20)
+    adj_tx_end = adj_tx_begin + timedelta(days=offset)
+    adj_tx = Treatment(treatment_type='Adjuvant', begin_date=adj_tx_begin,
+                       end_date=adj_tx_end)
     treatments = [neo_tx, primary_tx, adj_tx]
-
-    # Make the sessions.
-    sessions = [_create_session(subject, sess_nbr) for sess_nbr in range(1, 5)]
 
     # Make the subject detail.
     return SubjectDetail(birth_date=birth_date, races=races, encounters=encounters,
@@ -182,7 +195,7 @@ def _create_pathology(collection):
 
 def _create_breast_pathology():
     # The TNM score.
-    tnm = _create_tnm('Breast')
+    tnm = _create_tnm('Breast', 'p')
 
     # The estrogen status.
     positive = _random_boolean()
@@ -218,7 +231,7 @@ def _create_breast_pathology():
 
 def _create_sarcoma_pathology():
     # The TNM score.
-    tnm = _create_tnm('Sarcoma')
+    tnm = _create_tnm('Sarcoma', 'p')
 
     # The tumor site.
     site = 'Thigh'
@@ -233,22 +246,32 @@ def _create_sarcoma_pathology():
         stop = NecrosisPercentRange.UpperBound(value=low+10)
         necrosis_pct = NecrosisPercentRange(start=start, stop=stop)
 
-    # The histology
+    # The histology                                      
     histology = 'Fibrosarcoma'
 
     return SarcomaPathology(tnm=tnm, site=site, necrosis_pct=necrosis_pct,
                             histology=histology)
 
 
-def _create_tnm(collection):
+def _create_tnm(collection, prefix=None):
     if collection == 'Breast':
         grade = _create_breast_grade()
     elif collection == 'Sarcoma':
         grade = _create_sarcoma_grade()
     else:
         raise ValueError("Collection type not recognized: %s" % collection)
-    size = TNM.Size(prefix='p', tumor_size=_random_int(1, 4))
-    lymph_status = _random_int(0, 3)
+    
+    tumor_size_max = TNM.Size.tumor_size_choices(collection)[-1]
+    tumor_size = _random_int(1, tumor_size_max)
+    suffix_choices = TNM.Size.suffix_choices(collection)
+    suffix_ndx = _random_int(-1, len(suffix_choices) - 1)
+    if suffix_ndx < 0:
+        suffix = None
+    else:
+        suffix = suffix_choices[suffix_ndx]
+    size = TNM.Size(prefix=prefix, tumor_size=tumor_size, suffix=suffix)
+    lymph_status_max = TNM.lymph_status_choices(collection)[-1]
+    lymph_status = _random_int(0, lymph_status_max)
     metastasis = _random_boolean()
     invasion = _random_boolean()
 
@@ -282,11 +305,9 @@ def _create_sarcoma_grade():
 
 
 def _create_session(subject, session_number):
-    # Bump the session month.
-    mo = subject.number * session_number
     # Stagger the inter-session duration.
-    day = DATE_0.day + ((session_number - 1) * 5)
-    date = DATE_0.replace(month=mo, day=day)
+    offset = ((session_number - 1) * 20) + int(random.random() * 10)
+    date = DATE_0 + timedelta(days=offset)
 
     # The bolus arrival.
     arv = int(round((0.5 - random.random()) * 4)) + AVG_BOLUS_ARRIVAL_NDX
@@ -442,7 +463,7 @@ def _random_int(low, high):
     @param high the inclusive maximum value
     @return a random integer in the inclusive [low, high] range
     """
-    return Decimal(random.random() * (high - low)).to_integral_value() + low
+    return int(Decimal(random.random() * (high - low)).to_integral_value()) + low
 
 
 def _random_boolean():

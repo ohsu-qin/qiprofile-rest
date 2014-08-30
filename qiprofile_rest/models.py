@@ -292,14 +292,63 @@ class SarcomaPathology(Pathology):
 ## Clinical metrics ##
 
 class TNM(Outcome):
-    """The TNM tumor staging."""
+    """
+    The TNM tumor staging. The TNM fields are as follows:
+    
+      * size - primary tumor size (T)
 
+      * lymph_status - regional lymph nodes (N)
+
+      * metastasis - distant metastasis (M)
+
+      * grade - tumor grade (G)
+
+      * serum_tumor_markers (S)
+
+      * resection_boundaries (R)
+
+      * lymphatic_vessel_invasion (L)
+
+      * vein_invasion (V)
+    
+    The size is an aggregate Size field. 
+    See http://www.cancer.gov/cancertopics/factsheet/detection/staging for
+    an overview. See http://en.wikipedia.org/wiki/TNM_staging_system and
+    http://cancerstaging.blogspot.com/ for the value definition.
+        
+    Note:: The size and lymph_status choices can be further constrained by
+        tumor type. Since :class:`TNM` is a generic class, these constraints
+        are not enforced in this TNM class. Rather, the REST client is
+        responsible for enforcing additional choice constraints. The
+        :meth:`TNM.lymph_status_choices` helper method can be used for
+        tumor type specific choices. See :class:`TNM.Size`` for a discussion
+        of the size constraints.
+  """
     class Size(mongoengine.EmbeddedDocument):
-        """The TNM size field."""
+        """
+        The TNM primary tumor size field.
+        
+        Note:: The size score choices can be further constrained by tumor
+            type. For example, the sarcoma tumor_size choices are 0, 1 or 2
+            and suffix choices are ``a`` or ``b``. See :class:`TNM` for a
+            discussion of choice constraints. The :meth:`TNM.Size.tumor_size_choices`
+            and :meth:`TNM.Size.suffix_choices` helper methods can be used for
+            tumor type specific choices.
+        """
 
         PREFIXES = ['c', 'p', 'y', 'r', 'a', 'u']
 
         SUFFIXES = ['a', 'b', 'c']
+        
+        SUFFIX_CHOICES = dict(
+            Any=['a', 'b', 'c'],
+            Sarcoma=['a', 'b']
+        )
+        
+        TUMOR_SIZE_CHOICES = dict(
+            Any=range(0, 5),
+            Sarcoma=range(0, 3)
+        )
 
         SIZE_PAT = """
             ^(?P<prefix>c|p|y|r|a|u)?   # The prefix modifier
@@ -312,16 +361,38 @@ class TNM(Outcome):
             )$
         """
 
+        @staticmethod
+        def tumor_size_choices(tumor_type=None):
+            """
+            @param tumor_type the optional tumor type, e.g. ``Breast``
+            @return the tumor_size choices for the given type
+            """
+            if tumor_type not in TNM.Size.TUMOR_SIZE_CHOICES:
+                tumor_type = 'Any'
+            
+            return TNM.Size.TUMOR_SIZE_CHOICES[tumor_type]
+
+        @staticmethod
+        def suffix_choices(tumor_type=None):
+            """
+            @param tumor_type the optional tumor type, e.g. ``Breast``
+            @return the suffix choices for the given type
+            """
+            if tumor_type not in TNM.Size.SUFFIX_CHOICES:
+                tumor_type = 'Any'
+            
+            return TNM.Size.SUFFIX_CHOICES[tumor_type]
+
         SIZE_REGEX = re.compile(SIZE_PAT, re.VERBOSE)
         """The TNM size validation regular expression."""
 
         prefix = fields.StringField(choices=PREFIXES)
 
-        tumor_size = fields.IntField(choices=range(0, 5))
+        tumor_size = fields.IntField(choices=TUMOR_SIZE_CHOICES['Any'])
 
         in_situ = fields.BooleanField(default=False)
 
-        suffix = fields.StringField(choices=SUFFIXES)
+        suffix = fields.StringField(choices=SUFFIX_CHOICES['Any'])
 
         def __str__(self):
             prefix = self.prefix or ''
@@ -365,8 +436,13 @@ class TNM(Outcome):
             return True
 
     size = fields.EmbeddedDocumentField(Size)
+        
+    LYMPH_STATUS_CHOICES = dict(
+        Any=range(0, 4),
+        Sarcoma=range(0, 2)
+    )
 
-    lymph_status = fields.IntField(choices=range(0, 4))
+    lymph_status = fields.IntField(choices=LYMPH_STATUS_CHOICES['Any'])
 
     metastasis = fields.BooleanField(choices=choices.POS_NEG_CHOICES)
 
@@ -379,6 +455,17 @@ class TNM(Outcome):
     lymphatic_vessel_invasion = fields.BooleanField()
 
     vein_invasion = fields.IntField(choices=range(0, 3))
+
+    @staticmethod
+    def lymph_status_choices(tumor_type=None):
+        """
+        @param tumor_type the optional tumor type, e.g. ``Breast``
+        @return the lymph_status choices for the given type
+        """
+        if tumor_type not in TNM.LYMPH_STATUS_CHOICES:
+            tumor_type = 'Any'
+        
+        return TNM.LYMPH_STATUS_CHOICES[tumor_type]
 
 
 class Grade(Outcome):
