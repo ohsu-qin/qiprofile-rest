@@ -154,7 +154,7 @@ def _create_subject_detail(subject):
     surgery = Encounter(encounter_type='Surgery', date=surgery_date)
 
     # The post-surgery assessment.
-    offset = 3 +int(random.random() * 20)
+    offset = 3 + int(random.random() * 20)
     assessment_date = surgery_date + timedelta(days=offset)
     # The post-surgery assessment has a TNM.
     assessment_tnm = _create_tnm(subject.collection)
@@ -415,13 +415,13 @@ def _create_resource_filenames(subject, session_number, resource, series):
             for series in series]
 
 
-SESSION_TMPL = "data/%s/%s%03d/Session%02d/"
+SESSION_TMPL = "data/%s/arc001/%s%03d_Session%02d/"
 
 FILE_TMPL = "series%03d.nii.gz"
 
-SCAN_TMPL = SESSION_TMPL + "scan/%d/" + FILE_TMPL
+SCAN_TMPL = SESSION_TMPL + "SCANS/%d/NIFTI/" + FILE_TMPL
 
-RESOURCE_TMPL = SESSION_TMPL + "resource/%s/" + FILE_TMPL
+RESOURCE_TMPL = SESSION_TMPL + "RESOURCES/%s/" + FILE_TMPL
 
 
 def _scan_filename(subject, session_number, series_number):
