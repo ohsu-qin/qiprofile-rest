@@ -2,11 +2,11 @@ POS_NEG_CHOICES = [(True, 'Positive'), (False, 'Negative')]
 """The Boolean choices for Positive or Negative status."""
 
 RACE_CHOICES = [('White', 'White'),
-                ('Black' , 'Black or African American'),
+                ('Black', 'Black or African American'),
                 ('Asian', 'Asian'),
-                ('AIAN' , 'American Indian or Alaska Native'),
-                ('NHOPI' , 'Native Hawaiian or Other Pacific Islander')]
-"""The standard FDA race categories."""
+                ('AIAN', 'American Indian or Alaska Native'),
+                ('NHOPI', 'Native Hawaiian or Other Pacific Islander')]
+"""The standard FDA race categories, in order of US incidence."""
 
 ETHNICITY_CHOICES = [('Hispanic' , 'Hispanic or Latino'),
                      ('Non-Hispanic' , 'Not Hispanic or Latino')]

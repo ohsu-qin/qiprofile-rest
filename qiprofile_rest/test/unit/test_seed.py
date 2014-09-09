@@ -1,4 +1,4 @@
-from nose.tools import (assert_is_none, assert_is_instance,
+from nose.tools import (assert_is_none, assert_is_instance, assert_in,
                         assert_is_not_none, assert_true, assert_equal)
 from datetime import datetime
 from mongoengine import connect
@@ -30,11 +30,19 @@ class TestSeed(object):
             fetched_sbj = Subject.objects.get(**query)
             self._validate_subject(fetched_sbj)
  
+    SESSION_CNT = dict(
+        Breast=4,
+        Sarcoma=3
+    )
+ 
     def _validate_subject(self, subject):
+        assert_in(subject.collection, ['Breast', 'Sarcoma'],
+                  "Collection is invalid: %s" % subject.collection)
         assert_is_not_none(subject.detail, "%s is missing detail" % subject)
         assert_is_not_none(subject.detail.sessions, "%s has no sessions" % subject)
         sessions = subject.detail.sessions
-        assert_equal(len(sessions), 4, "%s session count is incorrect: %d" %
+        session_cnt = TestSeed.SESSION_CNT[subject.collection]
+        assert_equal(len(sessions), session_cnt, "%s session count is incorrect: %d" %
                                   (subject, len(sessions)))
         for session in sessions:
             self._validate_session(subject, session)

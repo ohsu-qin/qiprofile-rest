@@ -129,32 +129,75 @@ def _create_subject(collection, subject_number):
 
     return subject
 
+ETHNICITY_INCIDENCE = [15, 85]
+"""
+The rough US ethnicity incidence for the respective ethnicity choices.
+The incidences sum to 100.
+"""
+
+RACE_INCIDENCE = [70, 15, 5, 5, 5]
+"""
+The rough US race incidence for the respective race choices.
+The incidences sum to 100.
+"""
 
 def _create_subject_detail(subject):
     # The patient demographics.
-    yr = int(40 * random.random()) + 1950
+    yr = _random_int(1950, 1980)
     birth_date = datetime(yr, 7, 7, tzinfo=pytz.utc)
-    races = [choices.RACE_CHOICES[int(len(choices.RACE_CHOICES) * random.random())][0]]
+    # Only show one race.
+    races = [_choose_race()]
+    # The ethnicity, which is None half of the time.
+    ethnicity = _choose_ethnicity()
 
     # Make the sessions.
-    sessions = [_create_session(subject, sess_nbr) for sess_nbr in range(1, 5)]
+    if subject.collection == 'Breast':
+        session_cnt = 4
+    elif subject.collection == 'Sarcoma':
+        session_cnt = 3
+    else:
+        raise ValueError("Collection type not recognized: %s" % collection)
+    sessions = [_create_session(subject, sess_nbr) for sess_nbr in range(1, session_cnt + 1)]
 
-    # The biopsy is after the first visit.
-    offset = int(random.random() * 30)
-    biopsy_date = sessions[0].acquisition_date + timedelta(days=offset)
+    # The neodjuvant treatment starts a few days after the first visit.
+    offset = _random_int(0, 3)
+    neo_tx_begin = sessions[0].acquisition_date + timedelta(days=offset)
+    # The neodjuvant treatment ends a few days before the last visit.
+    offset = _random_int(0, 3)
+    neo_tx_end = sessions[-1].acquisition_date - timedelta(days=offset)
+    neo_tx = Treatment(treatment_type='Neoadjuvant', begin_date=neo_tx_begin,
+                           end_date=neo_tx_end)
+    
+    # The primary treatment (surgery) is a few days after the last scan.
+    offset = _random_int(0, 10)
+    surgery_date = sessions[-1].acquisition_date + timedelta(days=offset)
+    primary_tx = Treatment(treatment_type='Primary', begin_date=surgery_date,
+                           end_date=surgery_date)
+    
+    # Adjuvant treatment begins shortly after surgery.
+    offset = _random_int(0, 3)
+    adj_tx_begin = surgery_date + timedelta(days=offset)
+    # Adjuvant treatment ends about two weeks later.
+    offset = _random_int(10, 20)
+    adj_tx_end = adj_tx_begin + timedelta(days=offset)
+    adj_tx = Treatment(treatment_type='Adjuvant', begin_date=adj_tx_begin,
+                       end_date=adj_tx_end)
+    treatments = [neo_tx, primary_tx, adj_tx]
+
+    # The biopsy is a few days before the first visit.
+    offset = _random_int(0, 10)
+    biopsy_date = sessions[0].acquisition_date - timedelta(days=offset)
     
     # The biopsy has a pathology report.
     biopsy_path = _create_pathology(subject.collection)
-    biopsy = Encounter(encounter_type='Biopsy', date=biopsy_date, outcomes=[biopsy_path])
+    biopsy = Encounter(encounter_type='Biopsy', date=biopsy_date,
+                       outcomes=[biopsy_path])
 
-    # The surgery is after the penultimate visit.
-    offset = int(random.random() * 30)
-    surgery_date = sessions[-2].acquisition_date + timedelta(days=offset)
     # The surgery doesn't have an outcome.
     surgery = Encounter(encounter_type='Surgery', date=surgery_date)
 
     # The post-surgery assessment.
-    offset = 3 + int(random.random() * 20)
+    offset = _random_int(3, 13)
     assessment_date = surgery_date + timedelta(days=offset)
     # The post-surgery assessment has a TNM.
     assessment_tnm = _create_tnm(subject.collection)
@@ -162,27 +205,38 @@ def _create_subject_detail(subject):
                            outcomes=[assessment_tnm])
     encounters = [biopsy, surgery, assessment]
 
-    # The treatments.
-    offset = 20 + int(random.random() * 10)
-    neo_tx_begin = surgery_date - timedelta(days=offset)
-    offset = int(random.random() * 10)
-    neo_tx_end = surgery_date - timedelta(days=offset)
-    neo_tx = Treatment(treatment_type='Neoadjuvant', begin_date=neo_tx_begin,
-                           end_date=neo_tx_end)
-    primary_tx = Treatment(treatment_type='Primary', begin_date=surgery_date,
-                           end_date=surgery_date)
-    offset = int(random.random() * 10)
-    adj_tx_begin = surgery_date + timedelta(days=offset)
-    offset = int(random.random() * 20)
-    adj_tx_end = adj_tx_begin + timedelta(days=offset)
-    adj_tx = Treatment(treatment_type='Adjuvant', begin_date=adj_tx_begin,
-                       end_date=adj_tx_end)
-    treatments = [neo_tx, primary_tx, adj_tx]
-
     # Make the subject detail.
-    return SubjectDetail(birth_date=birth_date, races=races, encounters=encounters,
+    return SubjectDetail(birth_date=birth_date, races=races,
+                         ethnicity=ethnicity, encounters=encounters,
                          treatments=treatments, sessions=sessions)
 
+
+def _choose_race():
+    # Partition the race incidence from 1 to 100 and select the race by
+    # partition.
+    offset = _random_int(0, 99)
+    n = 0
+    for i, proportion in enumerate(RACE_INCIDENCE):
+        n += proportion
+        if offset < n:
+            # The first item in the race tuple is the database value,
+            # the second is the display value.
+            return choices.RACE_CHOICES[i][0]
+
+
+def _choose_ethnicity():
+    # Half the subjects don't specify the ethnicity.
+    if _random_boolean():
+        return None
+    offset = _random_int(0, 99)
+    n = 0
+    for i, proportion in enumerate(ETHNICITY_INCIDENCE):
+        n += proportion
+        if offset < n:
+            # The first item in the ethnicity tuple is the database value,
+            # the second is the display value.
+            return choices.ETHNICITY_CHOICES[i][0]
+    
 
 def _create_pathology(collection):
     if collection == 'Breast':
@@ -306,8 +360,7 @@ def _create_sarcoma_grade():
 
 def _create_session(subject, session_number):
     # Stagger the inter-session duration.
-    offset = ((session_number - 1) * 20) + int(random.random() * 10)
-    date = DATE_0 + timedelta(days=offset)
+    date = _create_session_date(subject, session_number)
 
     # The bolus arrival.
     arv = int(round((0.5 - random.random()) * 4)) + AVG_BOLUS_ARRIVAL_NDX
@@ -339,6 +392,18 @@ def _create_session(subject, session_number):
 
     return Session(number=session_number, acquisition_date=date,
                    modeling=[modeling], detail=detail)
+
+
+SESSION_OFFSET_RANGES = dict(
+    Breast=[(0, 5), (10, 15), (25, 30), (50,60)],
+    Sarcoma=[(0, 5), (10, 20), (40,50)]
+)
+"""The range of offsets from the initial date for the breast scan dates. """
+
+def _create_session_date(subject, session_number):
+    date_range = SESSION_OFFSET_RANGES[subject.collection][session_number - 1]
+    offset = _random_int(*date_range)
+    return DATE_0 + timedelta(days=offset)
 
 
 BREAST_SERIES_NUMBERS = [7, 8] + [11 + 2*n for n in range(0, 30)]

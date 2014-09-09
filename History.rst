@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 (http://quip1:6060/qiprofile-rest) for change details.
 
+2.1.8 / 2014-09-08
+------------------
+* More realistic seed race/ethnicity and timeline.
+
 2.1.7 / 2014-09-05
 ------------------
 * Format the test seed image file names per the XNAT convention.
