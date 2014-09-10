@@ -114,20 +114,22 @@ class Modeling(mongoengine.EmbeddedDocument):
     name = fields.StringField(required=True)
     """The modeling resource name, e.g. ``pk_R3y9``."""
 
-    fxl_k_trans = fields.FloatField()
-
-    fxr_k_trans = fields.FloatField()
-
-    v_e = fields.FloatField()
-
-    tau_i = fields.FloatField()
-
     image_container_name = fields.StringField(required=True)
     """
     The image container name, e.g. ``scan`` or ``reg_3Ju7.
-    This is not a MongoDB ObjectID reference to an ImageContainer,
+    This is not a ReferenceField to an ImageContainer,
     since ImageContainer is embedded in the SessionDetail.
     """
+
+    fxl_k_trans = fields.EmbeddedDocumentField('ModelingParameter')
+
+    fxr_k_trans = fields.EmbeddedDocumentField('ModelingParameter')
+
+    delta_k_trans = fields.EmbeddedDocumentField('ModelingParameter')
+
+    v_e = fields.EmbeddedDocumentField('ModelingParameter')
+
+    tau_i = fields.EmbeddedDocumentField('ModelingParameter')
 
     parameters = fields.DictField()
     """The modeling execution input parameters."""
@@ -136,12 +138,30 @@ class Modeling(mongoengine.EmbeddedDocument):
         return "Modeling %s" % self.name
 
 
+class ModelingParameter(mongoengine.EmbeddedDocument):
+    """The discrete modeling result."""
+
+    filename = fields.StringField(required=True)
+    """The voxel-wise mapping file path relative to the web app root."""
+
+    average = fields.FloatField(required=True)
+    """The average parameter value over all voxels."""
+
+
 class ImageContainer(mongoengine.EmbeddedDocument):
-    """The patient scan or registration."""
+    """
+    The patient scan or registration.
+    
+    :Note: Besides the defined fields, each ImageContainer has a required
+        name field. However, since the Scan name is a constant, the name
+        field cannot be defined in this ImageContainer superclass.
+        Defining the name field is a subclass responsibility.
+    """
 
     meta = dict(allow_inheritance=True)
 
     files = fields.ListField(field=fields.StringField())
+    """The image file pathnames relative to the web app root."""
 
     # TODO - is there a use case for several intensity measures
     # per container?

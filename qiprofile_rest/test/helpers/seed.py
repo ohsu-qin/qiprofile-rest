@@ -8,8 +8,8 @@ from decimal import Decimal
 from mongoengine import connect
 from qiprofile_rest import choices
 from qiprofile_rest.models import (Subject, SubjectDetail, Session, SessionDetail,
-                                   Modeling, Series, Scan, Registration, Intensity,
-                                   Probe,  Treatment, Encounter, BreastPathology,
+                                   Modeling, ModelingParameter, Series, Scan, Registration,
+                                   Intensity, Probe,  Treatment, Encounter, BreastPathology,
                                    SarcomaPathology, TNM, NottinghamGrade, FNCLCCGrade,
                                    NecrosisPercentValue, NecrosisPercentRange,
                                    HormoneReceptorStatus)
@@ -357,6 +357,15 @@ def _create_sarcoma_grade():
     return FNCLCCGrade(differentiation=differentiation, mitotic_count=mitotic_count,
                        necrosis=necrosis)
 
+FXL_K_TRANS_FILE_NAME = 'fxl_k_trans.nii.gz'
+
+FXR_K_TRANS_FILE_NAME = 'fxr_k_trans.nii.gz'
+
+DELTA_K_TRANS_FILE_NAME = 'delta_k_trans.nii.gz'
+
+V_E_FILE_NAME = 'v_e_trans.nii.gz'
+
+TAU_I_FILE_NAME = 'tau_i_trans.nii.gz'
 
 def _create_session(subject, session_number):
     # Stagger the inter-session duration.
@@ -373,25 +382,50 @@ def _create_session(subject, session_number):
     # Make the session detail.
     detail = SessionDetail(bolus_arrival_index=arv, series=series, scan=scan,
                            registrations=[reg])
-    # Save the detail.
+    # Save the detail, since it is not embedded.
     detail.save()
 
-    # Add modeling parameters with a random offset.
-    factor = 1 + ((random.random() - 0.5) * 0.4)
-    fxl_k_trans = FXL_K_TRANS_AVG * factor
-    factor = DELTA_K_TRANS_FACTOR + ((random.random() - 0.5) * 0.4)
-    fxr_k_trans = fxl_k_trans * factor
-    offset = (0.5 - random.random()) * 0.2
-    v_e = V_E_0 + offset
-    offset = (0.5 - random.random()) * 0.2
-    tau_i = TAU_I_0 + offset
-    name = "pk_%d" % (((subject.number - 1) * 3) + session_number)
-    modeling = Modeling(name=name, image_container_name=reg.name,
-                        fxl_k_trans=fxl_k_trans, fxr_k_trans=fxr_k_trans,
-                        v_e=v_e, tau_i=tau_i)
+    # The modeling resource.
+    modeling = _create_modeling(subject, session_number, scan)
 
     return Session(number=session_number, acquisition_date=date,
                    modeling=[modeling], detail=detail)
+
+
+def _create_modeling(subject, session_number, parent):
+    # The modeling resource name.
+    resource = "pk_%02d" % session_number
+    # Add modeling parameters with a random offset.
+    factor = 1 + ((random.random() - 0.5) * 0.4)
+    fxl_k_trans_avg = FXL_K_TRANS_AVG * factor
+    fxl_k_trans_file = _resource_filename(subject, session_number, resource,
+                                          FXL_K_TRANS_FILE_NAME)
+    fxl_k_trans = ModelingParameter(average=fxl_k_trans_avg, filename=fxl_k_trans_file)
+
+    factor = DELTA_K_TRANS_FACTOR + ((random.random() - 0.5) * 0.4)
+    fxr_k_trans_avg = fxl_k_trans_avg * factor
+    fxr_k_trans_file = _resource_filename(subject, session_number, resource,
+                                          FXR_K_TRANS_FILE_NAME)
+    fxr_k_trans = ModelingParameter(average=fxr_k_trans_avg, filename=fxr_k_trans_file)
+
+    delta_k_trans_avg = fxl_k_trans_avg - fxr_k_trans_avg
+    delta_k_trans_file = _resource_filename(subject, session_number, resource,
+                                            DELTA_K_TRANS_FILE_NAME)
+    delta_k_trans = ModelingParameter(average=delta_k_trans_avg, filename=delta_k_trans_file)
+
+    offset = (0.5 - random.random()) * 0.2
+    v_e_avg = V_E_0 + offset
+    v_e_file = _resource_filename(subject, session_number, resource, V_E_FILE_NAME)
+    v_e = ModelingParameter(average=v_e_avg, filename=v_e_file)
+
+    offset = (0.5 - random.random()) * 0.2
+    tau_i_avg = TAU_I_0 + offset
+    tau_i_file = _resource_filename(subject, session_number, resource, V_E_FILE_NAME)
+    tau_i = ModelingParameter(average=tau_i_avg, filename=tau_i_file)
+
+    return Modeling(name=resource, image_container_name=parent.name,
+                    fxl_k_trans=fxl_k_trans, fxr_k_trans=fxr_k_trans,
+                    delta_k_trans=delta_k_trans, v_e=v_e, tau_i=tau_i)
 
 
 SESSION_OFFSET_RANGES = dict(
@@ -435,7 +469,7 @@ def _create_scan(subject, session_number, series, bolus_arrival_index):
 
 def _create_registration(subject, session_number, series, bolus_arrival_index):
     resource = "reg_%02d" % session_number
-    files = _create_resource_filenames(subject, session_number, resource, series)
+    files = _create_registration_filenames(subject, session_number, resource, series)
     intensity = _create_intensity(len(series), bolus_arrival_index)
 
     return Registration(name=resource, files=files, intensity=intensity,
@@ -446,12 +480,11 @@ def _create_scan_filenames(subject, session_number, series):
     # Creates the file names for the given session. The file is
     # name is given as:
     #
-    #     ``data``/<project>/<subject>/<session>/``scan``/<number>/``series``<number>``.nii.gz``
+    # ``data``/<project>/<subject>/<session>/``scan``/<number>/``series``<number>``.nii.gz``
     #
     # e.g.::
     #
     #     data/QIN_Test/Breast003/Session02/scan/2/series002.nii.gz
-    # * data/QIN_Test/Sarcoma003/Session02/resource/reg_AuX4d/series027.nii.gz
     #
     # @param subject the parent subject
     # @param session_number the session number
@@ -461,15 +494,15 @@ def _create_scan_filenames(subject, session_number, series):
             for series in series]
 
 
-def _create_resource_filenames(subject, session_number, resource, series):
-    # Creates the file names for the given resource. The file is
+def _create_registration_filenames(subject, session_number, resource, series):
+    # Creates the file names for the given resource and series list. The file is
     # name is given as:
     #
-    #     ``data``/<project>/<subject>/<session>/``resource``/<resource>/``series``<number>``.nii.gz``
+    # ``data``/<project>/<subject>/<session>/``resource``/<resource>/``series``<number>``.nii.gz``
     #
     # e.g.::
     #
-    #     data/QIN_Test/Sarcoma003/Session02/resource/reg_AuX4d/series027.nii.gz
+    #     data/QIN_Test/Sarcoma003/Session02/resource/reg_01/series027.nii.gz
     #
     # @param subject the parent subject
     # @param session_number the session number
@@ -482,11 +515,11 @@ def _create_resource_filenames(subject, session_number, resource, series):
 
 SESSION_TMPL = "data/%s/arc001/%s%03d_Session%02d/"
 
-FILE_TMPL = "series%03d.nii.gz"
+SERIES_FILE_TMPL = "series%03d.nii.gz"
 
-SCAN_TMPL = SESSION_TMPL + "SCANS/%d/NIFTI/" + FILE_TMPL
+SCAN_TMPL = SESSION_TMPL + "SCANS/%d/NIFTI/" + SERIES_FILE_TMPL
 
-RESOURCE_TMPL = SESSION_TMPL + "RESOURCES/%s/" + FILE_TMPL
+RESOURCE_TMPL = SESSION_TMPL + "RESOURCES/%s/%s"
 
 
 def _scan_filename(subject, session_number, series_number):
@@ -494,9 +527,15 @@ def _scan_filename(subject, session_number, series_number):
                         session_number, series_number, series_number)
 
 
-def _resource_filename(subject, session_number, resource, series_number):
+def _resource_filename(subject, session_number, resource, filename):
     return RESOURCE_TMPL % (subject.project, subject.collection,
-                            subject.number, session_number, resource, series_number)
+                            subject.number, session_number, resource, filename)
+
+
+def _registration_filename(subject, session_number, resource, series):
+    filename = SERIES_FILE_TMPL % series
+
+    return _resource_filename(subject, session_number, resource, filename)
 
 
 def _create_intensity(count, bolus_arrival_index):

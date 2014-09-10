@@ -89,12 +89,81 @@ class TestSeed(object):
                                           (subject, session.number))
         assert_is_not_none(session.detail, "%s session %d is missing detail" %
                                         (subject, session.number))
-        assert_is_not_none(session.detail.scan, "%s session %d is missing scans" %
-                                             (subject, session.number))
+        
+        # Validate the scan
+        scan = session.detail.scan
+        assert_is_not_none(scan, "%s session %d is missing scans" %
+                           (subject, session.number))
 
-        scan_intensity = session.detail.scan.intensity
+        scan_intensity = scan.intensity
         assert_is_not_none(scan_intensity, "%s session %d scan is missing an"
                                            " intensity" % (subject, session.number))
+        # The scan has a modeling result.
+        assert_equal(len(session.modeling), 1,
+                     "%s session %d modeling size is incorrect: %d" %
+                     (subject, session.number, len(session.modeling)))
+        mdl = session.modeling[0]
+        assert_equal(mdl.image_container_name, 'scan',
+                     "%s session %d scan modeling %s image container is"
+                     " incorrect: %s" %
+                     (subject, session.number, mdl.name, mdl.image_container_name))
+        
+        fxl_k_trans = mdl.fxl_k_trans
+        assert_is_not_none(fxl_k_trans, "%s session %d scan modeling %s is"
+                                        " missing a fxl_k_trans parameter" %
+                                        (subject, session.number, mdl.name))
+        assert_is_not_none(fxl_k_trans.average, "%s session %d scan modeling %s"
+                                        " is missing a fxl_k_trans average" %
+                                        (subject, session.number, mdl.name))
+        assert_is_not_none(fxl_k_trans.filename, "%s session %d scan modeling %s"
+                                        " is missing a fxl_k_trans filename" %
+                                        (subject, session.number, mdl.name))
+        
+        fxr_k_trans = mdl.fxr_k_trans
+        assert_is_not_none(fxr_k_trans, "%s session %d scan modeling %s is"
+                                        " missing a fxr_k_trans parameter" %
+                                        (subject, session.number, mdl.name))
+        assert_is_not_none(fxr_k_trans.average, "%s session %d scan modeling %s"
+                                        " is missing a fxr_k_trans average" %
+                                        (subject, session.number, mdl.name))
+        assert_is_not_none(fxr_k_trans.filename, "%s session %d scan modeling %s"
+                                        " is missing a fxr_k_trans filename" %
+                                        (subject, session.number, mdl.name))
+        
+        delta_k_trans = mdl.delta_k_trans
+        assert_is_not_none(delta_k_trans, "%s session %d scan modeling %s is"
+                                          " missing a delta_k_trans parameter" %
+                                          (subject, session.number, mdl.name))
+        assert_is_not_none(delta_k_trans.average,
+                           "%s session %d scan modeling %s is missing a"
+                           " delta_k_trans average" %
+                            (subject, session.number, mdl.name))
+        assert_is_not_none(delta_k_trans.filename,
+                           "%s session %d scan modeling %s is missing a"
+                           " delta_k_trans filename" %
+                           (subject, session.number, mdl.name))
+        
+        v_e = mdl.v_e
+        assert_is_not_none(v_e, "%s session %d scan modeling %s is missing"
+                                " a v_e parameter" %
+                                (subject, session.number, mdl.name))
+        assert_is_not_none(v_e.average, "%s session %d scan modeling %s"
+                                        " is missing a v_e average" %
+                                        (subject, session.number, mdl.name))
+        assert_is_not_none(v_e.filename, "%s session %d scan modeling %s"
+                                        " is missing a v_e filename" %
+                                        (subject, session.number, mdl.name))
+        
+        tau_i = mdl.tau_i
+        assert_is_not_none(tau_i, "%s session %d scan modeling %s is missing"
+                                  " a tau_i parameter" %
+                                  (subject, session.number, mdl.name))
+        assert_is_not_none(tau_i.average, "%s session %d scan modeling %s"
+                                          " is missing a tau_i average" %
+                                          (subject, session.number, mdl.name))
+        assert_is_not_none(tau_i.filename, "%s session %d scan modeling %s"
+                                           " is missing a tau_i filename" %
+                                           (subject, session.number, mdl.name))
 
         assert_true(not not session.detail.registrations,
                "%s session %d registration is missing a registration" %
@@ -111,6 +180,7 @@ class TestSeed(object):
         assert_is_not_none(reg.intensity,
                            "%s session %d registration is missing an intensity" %
                             (subject, session.number))
+        
         # Verify that decimals are decoded as numbers.
         for value in reg_intensity.intensities:
             assert_true(isinstance(value, float),
