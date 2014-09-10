@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 (http://quip1:6060/qiprofile-rest) for change details.
 
+2.1.8 / 2014-09-09
+------------------
+* Embed the ModelingParameters.
+
 2.1.8 / 2014-09-08
 ------------------
 * More realistic seed race/ethnicity and timeline.
