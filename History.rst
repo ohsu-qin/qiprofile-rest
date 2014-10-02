@@ -1,7 +1,11 @@
 This history lists major release themes. See the GitHub commits
 (http://quip1:6060/qiprofile-rest) for change details.
 
-2.1.8 / 2014-09-09
+2.1.10 / 2014-10-02
+------------------
+* Pipe server output to the console.
+
+2.1.9 / 2014-09-09
 ------------------
 * Embed the ModelingParameters.
 
