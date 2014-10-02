@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 (http://quip1:6060/qiprofile-rest) for change details.
 
+2.1.11 / 2014-10-02
+------------------
+* Add colorization.
+
 2.1.10 / 2014-10-02
 ------------------
 * Pipe server output to the console.
