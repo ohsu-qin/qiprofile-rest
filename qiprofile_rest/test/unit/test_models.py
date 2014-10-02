@@ -8,6 +8,7 @@ from qiprofile_rest.models import *
 class TestModel(object):
     def setup(self):
         connect(db='qiprofile_test')
+        self.db = get_db()
         self.db.connection.drop_database('qiprofile_test')
     
     def tearDown(self):
