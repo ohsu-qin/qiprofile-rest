@@ -8,11 +8,11 @@ from decimal import Decimal
 from mongoengine import connect
 from qiprofile_rest import choices
 from qiprofile_rest.models import (Subject, SubjectDetail, Session, SessionDetail,
-                                   Modeling, ModelingParameter, Series, Scan, Registration,
-                                   Intensity, Probe,  Treatment, Encounter, BreastPathology,
-                                   SarcomaPathology, TNM, NottinghamGrade, FNCLCCGrade,
-                                   NecrosisPercentValue, NecrosisPercentRange,
-                                   HormoneReceptorStatus)
+                                   Modeling, ModelingParameter, Colorization, Series,
+                                   Scan, Registration, Intensity, Probe,  Treatment,
+                                   Encounter, BreastPathology, SarcomaPathology, TNM,
+                                   NottinghamGrade, FNCLCCGrade, NecrosisPercentValue,
+                                   NecrosisPercentRange, HormoneReceptorStatus)
 
 PROJECT = 'QIN_Test'
 
@@ -363,9 +363,13 @@ FXR_K_TRANS_FILE_NAME = 'fxr_k_trans.nii.gz'
 
 DELTA_K_TRANS_FILE_NAME = 'delta_k_trans.nii.gz'
 
+DELTA_K_TRANS_COLOR_FILE_NAME = 'delta_k_trans_color.nii.gz'
+
 V_E_FILE_NAME = 'v_e_trans.nii.gz'
 
 TAU_I_FILE_NAME = 'tau_i_trans.nii.gz'
+
+COLOR_LUT_FILE_NAME = 'etc/jet_colors.txt'
 
 def _create_session(subject, session_number):
     # Stagger the inter-session duration.
@@ -411,7 +415,12 @@ def _create_modeling(subject, session_number, parent):
     delta_k_trans_avg = fxl_k_trans_avg - fxr_k_trans_avg
     delta_k_trans_file = _resource_filename(subject, session_number, resource,
                                             DELTA_K_TRANS_FILE_NAME)
-    delta_k_trans = ModelingParameter(average=delta_k_trans_avg, filename=delta_k_trans_file)
+    # delta Ktrans is colorized as well.
+    delta_k_trans_color = _resource_filename(subject, session_number, resource,
+                                             DELTA_K_TRANS_COLOR_FILE_NAME)
+    colorization = Colorization(filename=delta_k_trans_file, color_lut=COLOR_LUT_FILE_NAME)
+    delta_k_trans = ModelingParameter(average=delta_k_trans_avg, filename=delta_k_trans_file,
+                                      colorization=colorization)
 
     offset = (0.5 - random.random()) * 0.2
     v_e_avg = V_E_0 + offset

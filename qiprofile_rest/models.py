@@ -146,6 +146,18 @@ class ModelingParameter(mongoengine.EmbeddedDocument):
 
     average = fields.FloatField(required=True)
     """The average parameter value over all voxels."""
+    
+    colorization = fields.EmbeddedDocumentField('Colorization')
+
+
+class Colorization(mongoengine.EmbeddedDocument):
+    """A colorized map file."""
+
+    filename = fields.StringField(required=True)
+    """The transformed mapping file path relative to the web app root."""
+
+    color_lut = fields.StringField(required=True)
+    """The color map lookup table file path relative to the web app root."""
 
 
 class ImageContainer(mongoengine.EmbeddedDocument):

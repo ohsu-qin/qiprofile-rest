@@ -142,6 +142,16 @@ class TestSeed(object):
                            "%s session %d scan modeling %s is missing a"
                            " delta_k_trans filename" %
                            (subject, session.number, mdl.name))
+        colorization = delta_k_trans.colorization
+        assert_is_not_none(colorization,
+                           "%s session %d scan modeling %s is missing a"
+                           " colorization" % (subject, session.number, mdl.name))
+        assert_is_not_none(colorization.filename,
+                           "%s session %d scan modeling %s colorization is"
+                           " missing a filename" % (subject, session.number, mdl.name))
+        assert_is_not_none(colorization.color_lut,
+                           "%s session %d scan modeling %s colorization is"
+                           " missing a LUT" % (subject, session.number, mdl.name))
         
         v_e = mdl.v_e
         assert_is_not_none(v_e, "%s session %d scan modeling %s is missing"
