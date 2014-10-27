@@ -114,9 +114,9 @@ class Modeling(mongoengine.EmbeddedDocument):
     name = fields.StringField(required=True)
     """The modeling resource name, e.g. ``pk_R3y9``."""
 
-    image_container_name = fields.StringField(required=True)
+    source = fields.StringField(required=True)
     """
-    The image container name, e.g. ``scan`` or ``reg_3Ju7.
+    The source image container name.
     This is not a ReferenceField to an ImageContainer,
     since ImageContainer is embedded in the SessionDetail.
     """
@@ -182,9 +182,14 @@ class ImageContainer(mongoengine.EmbeddedDocument):
 
 class Scan(ImageContainer):
     """The patient image scan."""
+    
+    SCAN_TYPES = ('t1', 't2')
 
-    name = fields.StringField(default='scan')
-    """The Scan name is always ``scan``."""
+    name = fields.StringField(default='scan_t1')
+    """The Scan name is ``scan_``*scan_type*, e.g. ``scan_t1``."""
+
+    scan_type = fields.StringField(choices=SCAN_TYPES)
+    """The Scan type, e.g. ``t1``."""
 
 
 class Registration(ImageContainer):
@@ -193,6 +198,9 @@ class Registration(ImageContainer):
 
     name = fields.StringField(required=True)
     """The registration resource name, e.g. ``reg_k3RtZ``."""
+    
+    source = fields.StringField(default='t1')
+    """The registration source scan type (default ``t1``)."""
 
     parameters = fields.DictField()
 
@@ -225,7 +233,9 @@ class SessionDetail(mongoengine.Document):
 
     series = fields.ListField(field=fields.EmbeddedDocumentField('Series'))
 
-    scan = fields.EmbeddedDocumentField('Scan')
+    scans = fields.ListField(
+        field=fields.EmbeddedDocumentField('Scan')
+    )
 
     registrations = fields.ListField(
         field=fields.EmbeddedDocumentField('Registration')

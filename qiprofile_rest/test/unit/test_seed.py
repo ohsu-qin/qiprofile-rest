@@ -88,27 +88,38 @@ class TestSeed(object):
                            "%s session %d acquisition date type is incorrect: %s" %
                            (subject, session.number, session.acquisition_date.__class__))
         assert_is_not_none(session.modeling, "%s session %d is missing modeling" %
-                                          (subject, session.number))
+                                             (subject, session.number))
         assert_is_not_none(session.detail, "%s session %d is missing detail" %
-                                        (subject, session.number))
+                                           (subject, session.number))
         
-        # Validate the scan
-        scan = session.detail.scan
-        assert_is_not_none(scan, "%s session %d is missing scans" %
-                           (subject, session.number))
-
-        scan_intensity = scan.intensity
+        # Validate the scans.
+        scans = session.detail.scans
+        assert_equal(len(scans), 2, "%s session %d scan count is incorrect: %d" %
+                                    (subject, session.number, len(scans)))
+        
+        # The T1 scan
+        t1_scan = next((scan for scan in scans if scan.scan_type == 't1'),
+                       None)
+        assert_is_not_none(t1_scan, "%s session %d is missing the T1 scan" %
+                                        (subject, session.number))
+        scan_intensity = t1_scan.intensity
         assert_is_not_none(scan_intensity, "%s session %d scan is missing an"
                                            " intensity" % (subject, session.number))
+        
+        # Validate the registration.
+        regs = session.detail.registrations 
+        assert_equal(len(regs), 1, "%s session %d registrations count is incorrect:"
+                                   " %d" %(subject, session.number, len(regs)))
+        reg = regs[0]
+        
         # The scan has a modeling result.
         assert_equal(len(session.modeling), 1,
                      "%s session %d modeling size is incorrect: %d" %
                      (subject, session.number, len(session.modeling)))
         mdl = session.modeling[0]
-        assert_equal(mdl.image_container_name, 'scan',
-                     "%s session %d scan modeling %s image container is"
-                     " incorrect: %s" %
-                     (subject, session.number, mdl.name, mdl.image_container_name))
+        assert_equal(mdl.source, reg.name,
+                     "%s session %d modeling %s source is incorrect: %s" %
+                     (subject, session.number, mdl.name, mdl.source))
         
         fxl_k_trans = mdl.fxl_k_trans
         assert_is_not_none(fxl_k_trans, "%s session %d scan modeling %s is"

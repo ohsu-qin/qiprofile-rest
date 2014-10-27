@@ -141,6 +141,8 @@ The rough US race incidence for the respective race choices.
 The incidences sum to 100.
 """
 
+T2_SESSION_PAT = "Se"
+
 def _create_subject_detail(subject):
     # The patient demographics.
     yr = _random_int(1950, 1980)
@@ -157,6 +159,7 @@ def _create_subject_detail(subject):
         session_cnt = 3
     else:
         raise ValueError("Collection type not recognized: %s" % collection)
+    # The sessions.
     sessions = [_create_session(subject, sess_nbr) for sess_nbr in range(1, session_cnt + 1)]
 
     # The neodjuvant treatment starts a few days after the first visit.
@@ -383,24 +386,25 @@ def _create_session(subject, session_number):
     arv = int(round((0.5 - random.random()) * 4)) + AVG_BOLUS_ARRIVAL_NDX
     # Make the series list.
     series = _create_all_series(subject.collection)
-    # Make the scan.
-    scan = _create_scan(subject, session_number, series, arv)
-    # Make the registration.
+    # Make the scans.
+    t1_scan = _create_t1_scan(subject, session_number, series, arv)
+    t2_scan = _create_t2_scan(subject, session_number, series, arv)
+    scans = [t1_scan, t2_scan]
     reg = _create_registration(subject, session_number, series, arv)
     # Make the session detail.
-    detail = SessionDetail(bolus_arrival_index=arv, series=series, scan=scan,
-                           registrations=[reg])
+    detail = SessionDetail(bolus_arrival_index=arv, series=series,
+                           scans=scans, registrations=[reg])
     # Save the detail, since it is not embedded.
     detail.save()
 
     # The modeling resource.
-    modeling = _create_modeling(subject, session_number, scan)
+    modeling = _create_modeling(subject, session_number, reg.name)
 
     return Session(number=session_number, acquisition_date=date,
                    modeling=[modeling], detail=detail)
 
 
-def _create_modeling(subject, session_number, parent):
+def _create_modeling(subject, session_number, source):
     # The modeling resource name.
     resource = "pk_%02d" % session_number
     # Add modeling parameters with a random offset.
@@ -436,7 +440,7 @@ def _create_modeling(subject, session_number, parent):
     tau_i_file = _resource_filename(subject, session_number, resource, V_E_FILE_NAME)
     tau_i = ModelingParameter(average=tau_i_avg, filename=tau_i_file)
 
-    return Modeling(name=resource, image_container_name=parent.name,
+    return Modeling(name=resource, source=source,
                     fxl_k_trans=fxl_k_trans, fxr_k_trans=fxr_k_trans,
                     delta_k_trans=delta_k_trans, v_e=v_e, tau_i=tau_i)
 
@@ -479,15 +483,21 @@ def _create_all_series(collection):
     return [Series(number=number) for number in SERIES_NUMBERS[collection]]
 
 
-def _create_scan(subject, session_number, series, bolus_arrival_index):
-    files = _create_scan_filenames(subject, session_number, series)
+def _create_t1_scan(subject, session_number, series, bolus_arrival_index):
+    files = _create_scan_filenames(subject, session_number, series, 't1')
     intensity = _create_intensity(len(series), bolus_arrival_index)
     # Add a motion artifact.
     start = 12 + _random_int(0, 5)
     for i in range(start, start + 5):
         intensity.intensities[i] -= random.random() * 8
+    
+    return Scan(scan_type='t1', files=files, intensity=intensity)
 
-    return Scan(files=files, intensity=intensity)
+
+def _create_t2_scan(subject, session_number, series, bolus_arrival_index):
+    files = _create_scan_filenames(subject, session_number, series, 't2')
+
+    return Scan(scan_type='t2', files=files)
 
 
 def _create_registration(subject, session_number, series, bolus_arrival_index):
@@ -499,21 +509,16 @@ def _create_registration(subject, session_number, series, bolus_arrival_index):
                         parameters=REG_PARAMS)
 
 
-def _create_scan_filenames(subject, session_number, series):
+def _create_scan_filenames(subject, session_number, series, scan_type):
     # Creates the file names for the given session. The file is
     # name is given as:
     #
-    # ``data``/<project>/<subject>/<session>/``scan``/<number>/``series``<number>``.nii.gz``
+    # ``data``/<project>/<subject>/<session>/``scan``/<number>/``series``<number>``_``<scan_type>``.nii.gz``
     #
     # e.g.::
     #
-    #     data/QIN_Test/Breast003/Session02/scan/2/series002.nii.gz
-    #
-    # @param subject the parent subject
-    # @param session_number the session number
-    # @param series the series array
-    # @return the file name array
-    return [_scan_filename(subject, session_number, series.number)
+    #     data/QIN_Test/Breast003/Session02/scan/2/series002_t1.nii.gz
+    return [_scan_filename(subject, session_number, series.number, scan_type)
             for series in series]
 
 
@@ -538,16 +543,18 @@ def _create_registration_filenames(subject, session_number, resource, series):
 
 SESSION_TMPL = "data/%s/arc001/%s%03d_Session%02d/"
 
-SERIES_FILE_TMPL = "series%03d.nii.gz"
+SCAN_FILE_TMPL = "series%03d_%s.nii.gz"
 
-SCAN_TMPL = SESSION_TMPL + "SCANS/%d/NIFTI/" + SERIES_FILE_TMPL
+REG_FILE_TMPL = "series%03d.nii.gz"
+
+SCAN_TMPL = SESSION_TMPL + "SCANS/%d/NIFTI/" + SCAN_FILE_TMPL
 
 RESOURCE_TMPL = SESSION_TMPL + "RESOURCES/%s/%s"
 
 
-def _scan_filename(subject, session_number, series_number):
+def _scan_filename(subject, session_number, series_number, scan_type):
     return SCAN_TMPL % (subject.project, subject.collection, subject.number,
-                        session_number, series_number, series_number)
+                        session_number, series_number, series_number, scan_type)
 
 
 def _resource_filename(subject, session_number, resource, filename):
@@ -556,7 +563,7 @@ def _resource_filename(subject, session_number, resource, filename):
 
 
 def _registration_filename(subject, session_number, resource, series):
-    filename = SERIES_FILE_TMPL % series
+    filename = REG_FILE_TMPL % series
 
     return _resource_filename(subject, session_number, resource, filename)
 
