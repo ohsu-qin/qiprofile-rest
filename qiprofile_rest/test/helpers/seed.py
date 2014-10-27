@@ -10,8 +10,8 @@ from qiprofile_rest import choices
 from qiprofile_rest.models import (Subject, SubjectDetail, Session, SessionDetail,
                                    Modeling, ModelingParameter, Colorization, Series,
                                    Scan, Registration, Intensity, Probe,  Treatment,
-                                   Encounter, BreastPathology, SarcomaPathology, TNM,
-                                   NottinghamGrade, FNCLCCGrade, NecrosisPercentValue,
+                                   Encounter, GenericEvaluation, BreastPathology, SarcomaPathology,
+                                   TNM, NottinghamGrade, FNCLCCGrade, NecrosisPercentValue,
                                    NecrosisPercentRange, HormoneReceptorStatus)
 
 PROJECT = 'QIN_Test'
@@ -191,7 +191,7 @@ def _create_subject_detail(subject):
     # The biopsy has a pathology report.
     biopsy_path = _create_pathology(subject.collection)
     biopsy = Encounter(encounter_type='Biopsy', date=biopsy_date,
-                       outcomes=[biopsy_path])
+                       evaluation=biopsy_path)
 
     # The surgery doesn't have an outcome.
     surgery = Encounter(encounter_type='Surgery', date=surgery_date)
@@ -199,10 +199,11 @@ def _create_subject_detail(subject):
     # The post-surgery assessment.
     offset = _random_int(3, 13)
     assessment_date = surgery_date + timedelta(days=offset)
-    # The post-surgery assessment has a TNM.
+    # The post-surgery evaluation has a TNM.
     assessment_tnm = _create_tnm(subject.collection)
+    evaluation = GenericEvaluation(outcomes=[assessment_tnm])
     assessment = Encounter(encounter_type='Assessment', date=assessment_date,
-                           outcomes=[assessment_tnm])
+                           evaluation=evaluation)
     encounters = [biopsy, surgery, assessment]
 
     # Make the subject detail.
@@ -255,7 +256,8 @@ def _create_breast_pathology():
     positive = _random_boolean()
     quick_score = _random_int(0, 8)
     intensity = _random_int(0, 100)
-    estrogen = HormoneReceptorStatus(positive=positive,
+    estrogen = HormoneReceptorStatus(hormone='estrogen',
+                                     positive=positive,
                                      quick_score=quick_score,
                                      intensity=intensity)
 
@@ -263,7 +265,8 @@ def _create_breast_pathology():
     positive = _random_boolean()
     quick_score = _random_int(0, 8)
     intensity = _random_int(0, 100)
-    progestrogen = HormoneReceptorStatus(positive=positive,
+    progestrogen = HormoneReceptorStatus(hormone='progestrogen',
+                                         positive=positive,
                                          quick_score=quick_score,
                                          intensity=intensity)
 
@@ -329,8 +332,9 @@ def _create_tnm(collection, prefix=None):
     metastasis = _random_boolean()
     invasion = _random_boolean()
 
-    return TNM(grade=grade, size=size, lymph_status=lymph_status,
-               metastasis=metastasis, lymphatic_vessel_invasion=invasion)
+    return TNM(tumor_type=collection, grade=grade, size=size,
+               lymph_status=lymph_status, metastasis=metastasis,
+               lymphatic_vessel_invasion=invasion)
 
 
 def _create_breast_grade():
@@ -450,8 +454,18 @@ def _create_session_date(subject, session_number):
 
 
 BREAST_SERIES_NUMBERS = [7, 8] + [11 + 2*n for n in range(0, 30)]
+"""
+The  Breast series numbers are 7, 8, 11, 13, ..., 69.
+There are 32 AIRC Breast scans.
+"""
 
-SARCOMA_SERIES_NUMBERS = [10, 11] + [14 + 2*n for n in range(0, 43)] + [101 + 2*n for n in range(0, 10)]
+SARCOMA_SERIES_NUMBERS = [9, 10] + [13 + 2*n for n in range(0, 38)]
+"""
+The Sarcoma series numbers are 9, 10, 13, 15, ..., 87.
+There are 40 AIRC Sarcoma001 Session01 series.
+
+Note: the AIRC Sarcoma scan count and numbering scheme varies.
+"""
 
 SERIES_NUMBERS = dict(
     Breast=BREAST_SERIES_NUMBERS,

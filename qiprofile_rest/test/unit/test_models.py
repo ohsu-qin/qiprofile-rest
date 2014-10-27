@@ -58,9 +58,11 @@ class TestModel(object):
         detail.encounters = [encounter]
         # The encounter outcome is optional.
         detail.save()
-        # Add the outcome.
+        # Add the evaluation.
+        evaluation = Evaluation()
         outcome = TNM()
-        encounter.outcomes = [outcome]
+        evaluation.outcomes = [outcome]
+        encounter.evaluation = evaluation
         detail.save()
 
     def test_tnm_size(self):

@@ -266,6 +266,18 @@ class Encounter(mongoengine.EmbeddedDocument):
 
     date = fields.DateTimeField(required=True)
 
+    evaluation = fields.EmbeddedDocumentField('Evaluation')
+
+
+class Evaluation(mongoengine.EmbeddedDocument):
+    """The patient evaluation holds outcomes."""
+
+    meta = dict(allow_inheritance=True)
+
+
+class GenericEvaluation(Evaluation):
+    """An unconstrained set of outcomes."""
+
     outcomes = fields.ListField(fields.EmbeddedDocumentField('Outcome'))
 
 
@@ -275,7 +287,7 @@ class Outcome(mongoengine.EmbeddedDocument):
     meta = dict(allow_inheritance=True)
 
 
-class Pathology(Outcome):
+class Pathology(Evaluation):
     """The patient pathology summary."""
 
     meta = dict(allow_inheritance=True)
@@ -373,7 +385,7 @@ class TNM(Outcome):
         SUFFIXES = ['a', 'b', 'c']
         
         SUFFIX_CHOICES = dict(
-            Any=['a', 'b', 'c'],
+            Any=['mi', 'a', 'b', 'c'],
             Sarcoma=['a', 'b']
         )
         
@@ -466,14 +478,17 @@ class TNM(Outcome):
                                           " True cannot have a suffix %s" %
                                           self.suffix)
             return True
-
-    size = fields.EmbeddedDocumentField(Size)
         
     LYMPH_STATUS_CHOICES = dict(
         Any=range(0, 4),
         Sarcoma=range(0, 2)
     )
 
+    tumor_type = fields.StringField(required=True)
+
+    size = fields.EmbeddedDocumentField(Size)
+
+    # TODO - make lymph status an aggregate with suffix modifiers.
     lymph_status = fields.IntField(choices=LYMPH_STATUS_CHOICES['Any'])
 
     metastasis = fields.BooleanField(choices=choices.POS_NEG_CHOICES)
@@ -517,7 +532,9 @@ class NottinghamGrade(Grade):
     COMPONENT_CHOICES = range(1, 4)
 
     tubular_formation = fields.IntField(choices=COMPONENT_CHOICES)
+    
     nuclear_pleomorphism = fields.IntField(choices=COMPONENT_CHOICES)
+    
     mitotic_count = fields.IntField(choices=COMPONENT_CHOICES)
 
 
@@ -527,6 +544,8 @@ class HormoneReceptorStatus(Outcome):
     class IntensityField(fields.IntField):
         def validate(self, value, clean=True):
             return value > 0 and value <= 100
+
+    hormone = fields.StringField(required=True)
 
     positive = fields.BooleanField(choices=choices.POS_NEG_CHOICES)
 

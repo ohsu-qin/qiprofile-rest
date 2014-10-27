@@ -60,23 +60,25 @@ class TestSeed(object):
                       None)
         assert_is_not_none(biopsy, "%s session %d is missing a biopsy" %
                                    (subject, session.number))
-        assert_equal(len(biopsy.outcomes), 1, "%s biopsy outcomes size is"
-                                              " incorrect" % subject)
-        path = biopsy.outcomes[0]
+        path = biopsy.evaluation
+        assert_is_not_none(path, "%s biopsy is missing a pathology report" %
+                                 subject)
         assert_is_not_none(path.tnm, "%s biopsy pathology report is missing"
                                      " a TNM" % subject)
+        assert_is_not_none(path.tnm.tumor_type, "%s biopsy TNM is missing the"
+                                     " tumor type" % subject)
         surgery = next((enc for enc in encounters if enc.encounter_type == 'Surgery'),
                       None)
         assert_is_not_none(surgery, "%s session %d is missing a surgery" %
                                      (subject, session.number))
-        assert_equal(len(surgery.outcomes), 0,
-                     "%s surgery incorrectly has an outcome" % subject)
+        assert_is_none(surgery.evaluation,
+                     "%s surgery incorrectly has an evaluation" % subject)
         post_trt = next((enc for enc in encounters if enc.encounter_type == 'Assessment'),
                       None)
         assert_is_not_none(post_trt, "%s session %d is missing an assessment" %
                                      (subject, session.number))
-        assert_equal(len(post_trt.outcomes), 1,
-                     "%s post-treatment assessment outcomes size is incorrect" % subject)
+        assert_is_not_none(post_trt.evaluation,
+                     "%s post-treatment assessment is missing an evaluation" % subject)
 
     def _validate_session(self, subject, session):
         assert_is_not_none(session.acquisition_date,
