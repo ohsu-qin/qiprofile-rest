@@ -116,7 +116,7 @@ class Modeling(mongoengine.EmbeddedDocument):
 
     source = fields.StringField(required=True)
     """
-    The source image container name.
+    The source image container id.
     This is not a ReferenceField to an ImageContainer,
     since ImageContainer is embedded in the SessionDetail.
     """
@@ -147,30 +147,28 @@ class ModelingParameter(mongoengine.EmbeddedDocument):
     average = fields.FloatField(required=True)
     """The average parameter value over all voxels."""
     
-    colorization = fields.EmbeddedDocumentField('Colorization')
+    label_map = fields.EmbeddedDocumentField('LabelMap')
 
 
-class Colorization(mongoengine.EmbeddedDocument):
-    """A colorized map file."""
+class LabelMap(mongoengine.EmbeddedDocument):
+    """A label map with an optional associated color lookup table."""
 
     filename = fields.StringField(required=True)
-    """The transformed mapping file path relative to the web app root."""
-
-    color_lut = fields.StringField(required=True)
+    """The label map file path relative to the web app root."""
+    
+    color_table = fields.StringField()
     """The color map lookup table file path relative to the web app root."""
 
 
 class ImageContainer(mongoengine.EmbeddedDocument):
     """
     The patient scan or registration.
-    
-    :Note: Besides the defined fields, each ImageContainer has a required
-        name field. However, since the Scan name is a constant, the name
-        field cannot be defined in this ImageContainer superclass.
-        Defining the name field is a subclass responsibility.
     """
 
     meta = dict(allow_inheritance=True)
+
+    name = fields.StringField(required=True)
+    """The container name, e.g. scan ``t1`` or registration ``k3RtZ``."""
 
     files = fields.ListField(field=fields.StringField())
     """The image file pathnames relative to the web app root."""
@@ -183,24 +181,13 @@ class ImageContainer(mongoengine.EmbeddedDocument):
 class Scan(ImageContainer):
     """The patient image scan."""
     
-    SCAN_TYPES = ('t1', 't2')
-
-    name = fields.StringField(default='scan_t1')
-    """The Scan name is ``scan_``*scan_type*, e.g. ``scan_t1``."""
-
-    scan_type = fields.StringField(choices=SCAN_TYPES)
-    """The Scan type, e.g. ``t1``."""
+    registrations = fields.ListField(field=mongoengine.EmbeddedDocumentField('Registration'))
+    """The registration {name: object} dictionary."""
 
 
 class Registration(ImageContainer):
     """The patient image registration that results from processing
     the image scan."""
-
-    name = fields.StringField(required=True)
-    """The registration resource name, e.g. ``reg_k3RtZ``."""
-    
-    source = fields.StringField(default='t1')
-    """The registration source scan type (default ``t1``)."""
 
     parameters = fields.DictField()
 
@@ -231,15 +218,10 @@ class SessionDetail(mongoengine.Document):
 
     bolus_arrival_index = fields.IntField()
 
-    series = fields.ListField(field=fields.EmbeddedDocumentField('Series'))
+    series = fields.ListField(field=mongoengine.EmbeddedDocumentField('Series'))
 
-    scans = fields.ListField(
-        field=fields.EmbeddedDocumentField('Scan')
-    )
-
-    registrations = fields.ListField(
-        field=fields.EmbeddedDocumentField('Registration')
-    )
+    scans = fields.DictField(field=mongoengine.EmbeddedDocumentField('Scan'))
+    """The scan {name: object} dictionary."""
 
     def clean(self):
         arv = self.bolus_arrival_index
@@ -395,7 +377,7 @@ class TNM(Outcome):
         SUFFIXES = ['a', 'b', 'c']
         
         SUFFIX_CHOICES = dict(
-            Any=['mi', 'a', 'b', 'c'],
+            Any=['a', 'b', 'c'],
             Sarcoma=['a', 'b']
         )
         
@@ -444,7 +426,12 @@ class TNM(Outcome):
 
         tumor_size = fields.IntField(choices=TUMOR_SIZE_CHOICES['Any'])
 
-        in_situ = fields.BooleanField(default=False)
+        class InSitu(mongoengine.EmbeddedDocument):
+            INVASIVE_TYPE_CHOICES = ('ductal', 'lobular')
+            
+            invasive_type = fields.StringField(choices=INVASIVE_TYPE_CHOICES)
+
+        in_situ = fields.EmbeddedDocumentField(InSitu)
 
         suffix = fields.StringField(choices=SUFFIX_CHOICES['Any'])
 
@@ -498,7 +485,8 @@ class TNM(Outcome):
 
     size = fields.EmbeddedDocumentField(Size)
 
-    # TODO - make lymph status an aggregate with suffix modifiers.
+    # TODO - make lymph status an aggregate with suffix modifiers,
+    # including 'mi'.
     lymph_status = fields.IntField(choices=LYMPH_STATUS_CHOICES['Any'])
 
     metastasis = fields.BooleanField(choices=choices.POS_NEG_CHOICES)

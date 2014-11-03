@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+import re
 from datetime import (datetime, timedelta)
 import pytz
 import random
@@ -8,7 +9,7 @@ from decimal import Decimal
 from mongoengine import connect
 from qiprofile_rest import choices
 from qiprofile_rest.models import (Subject, SubjectDetail, Session, SessionDetail,
-                                   Modeling, ModelingParameter, Colorization, Series,
+                                   Modeling, ModelingParameter, LabelMap, Series,
                                    Scan, Registration, Intensity, Probe,  Treatment,
                                    Encounter, GenericEvaluation, BreastPathology, SarcomaPathology,
                                    TNM, NottinghamGrade, FNCLCCGrade, NecrosisPercentValue,
@@ -370,13 +371,11 @@ FXR_K_TRANS_FILE_NAME = 'fxr_k_trans.nii.gz'
 
 DELTA_K_TRANS_FILE_NAME = 'delta_k_trans.nii.gz'
 
-DELTA_K_TRANS_COLOR_FILE_NAME = 'delta_k_trans_color.nii.gz'
-
 V_E_FILE_NAME = 'v_e_trans.nii.gz'
 
 TAU_I_FILE_NAME = 'tau_i_trans.nii.gz'
 
-COLOR_LUT_FILE_NAME = 'etc/jet_colors.txt'
+COLOR_TABLE_FILE_NAME = 'etc/jet_colors.txt'
 
 def _create_session(subject, session_number):
     # Stagger the inter-session duration.
@@ -389,15 +388,15 @@ def _create_session(subject, session_number):
     # Make the scans.
     t1_scan = _create_t1_scan(subject, session_number, series, arv)
     t2_scan = _create_t2_scan(subject, session_number, series, arv)
-    scans = [t1_scan, t2_scan]
-    reg = _create_registration(subject, session_number, series, arv)
+    scans = {t1_scan.name: t1_scan, t2_scan.name: t2_scan}
     # Make the session detail.
     detail = SessionDetail(bolus_arrival_index=arv, series=series,
-                           scans=scans, registrations=[reg])
+                           scans=scans)
     # Save the detail, since it is not embedded.
     detail.save()
 
     # The modeling resource.
+    reg = t1_scan.registrations[0]
     modeling = _create_modeling(subject, session_number, reg.name)
 
     return Session(number=session_number, acquisition_date=date,
@@ -412,33 +411,38 @@ def _create_modeling(subject, session_number, source):
     fxl_k_trans_avg = FXL_K_TRANS_AVG * factor
     fxl_k_trans_file = _resource_filename(subject, session_number, resource,
                                           FXL_K_TRANS_FILE_NAME)
-    fxl_k_trans = ModelingParameter(average=fxl_k_trans_avg, filename=fxl_k_trans_file)
+    fxl_k_trans_label_map = _create_label_map(fxl_k_trans_file)
+    fxl_k_trans = ModelingParameter(average=fxl_k_trans_avg, filename=fxl_k_trans_file,
+                                    label_map=fxl_k_trans_label_map)
 
     factor = DELTA_K_TRANS_FACTOR + ((random.random() - 0.5) * 0.4)
     fxr_k_trans_avg = fxl_k_trans_avg * factor
     fxr_k_trans_file = _resource_filename(subject, session_number, resource,
                                           FXR_K_TRANS_FILE_NAME)
-    fxr_k_trans = ModelingParameter(average=fxr_k_trans_avg, filename=fxr_k_trans_file)
+    fxr_k_trans_label_map = _create_label_map(fxr_k_trans_file)
+    fxr_k_trans = ModelingParameter(average=fxr_k_trans_avg, filename=fxr_k_trans_file,
+                                    label_map=fxr_k_trans_label_map)
 
     delta_k_trans_avg = fxl_k_trans_avg - fxr_k_trans_avg
     delta_k_trans_file = _resource_filename(subject, session_number, resource,
                                             DELTA_K_TRANS_FILE_NAME)
-    # delta Ktrans is colorized as well.
-    delta_k_trans_color = _resource_filename(subject, session_number, resource,
-                                             DELTA_K_TRANS_COLOR_FILE_NAME)
-    colorization = Colorization(filename=delta_k_trans_file, color_lut=COLOR_LUT_FILE_NAME)
+    delta_k_trans_label_map = _create_label_map(delta_k_trans_file)
     delta_k_trans = ModelingParameter(average=delta_k_trans_avg, filename=delta_k_trans_file,
-                                      colorization=colorization)
+                                      label_map=delta_k_trans_label_map)
 
     offset = (0.5 - random.random()) * 0.2
     v_e_avg = V_E_0 + offset
     v_e_file = _resource_filename(subject, session_number, resource, V_E_FILE_NAME)
-    v_e = ModelingParameter(average=v_e_avg, filename=v_e_file)
+    v_e_label_map = _create_label_map(v_e_file)
+    v_e = ModelingParameter(average=v_e_avg, filename=v_e_file,
+                            label_map=v_e_label_map)
 
     offset = (0.5 - random.random()) * 0.2
     tau_i_avg = TAU_I_0 + offset
     tau_i_file = _resource_filename(subject, session_number, resource, V_E_FILE_NAME)
-    tau_i = ModelingParameter(average=tau_i_avg, filename=tau_i_file)
+    tau_i_label_map = _create_label_map(tau_i_file)
+    tau_i = ModelingParameter(average=tau_i_avg, filename=tau_i_file,
+                                      label_map=tau_i_label_map)
 
     return Modeling(name=resource, source=source,
                     fxl_k_trans=fxl_k_trans, fxr_k_trans=fxr_k_trans,
@@ -490,22 +494,26 @@ def _create_t1_scan(subject, session_number, series, bolus_arrival_index):
     start = 12 + _random_int(0, 5)
     for i in range(start, start + 5):
         intensity.intensities[i] -= random.random() * 8
+    # Make the T1 registration.
+    reg = _create_registration(subject, session_number, series,
+                               bolus_arrival_index)
     
-    return Scan(scan_type='t1', files=files, intensity=intensity)
+    return Scan(name='t1', files=files, intensity=intensity,
+                registrations=[reg])
 
 
 def _create_t2_scan(subject, session_number, series, bolus_arrival_index):
     files = _create_scan_filenames(subject, session_number, series, 't2')
-
-    return Scan(scan_type='t2', files=files)
+    
+    return Scan(name='t2', files=files)
 
 
 def _create_registration(subject, session_number, series, bolus_arrival_index):
-    resource = "reg_%02d" % session_number
-    files = _create_registration_filenames(subject, session_number, resource, series)
+    name = "%02d" % session_number
+    files = _create_registration_filenames(subject, session_number, name,
+                                           series)
     intensity = _create_intensity(len(series), bolus_arrival_index)
-
-    return Registration(name=resource, files=files, intensity=intensity,
+    return Registration(name=name, files=files, intensity=intensity,
                         parameters=REG_PARAMS)
 
 
@@ -513,7 +521,11 @@ def _create_scan_filenames(subject, session_number, series, scan_type):
     # Creates the file names for the given session. The file is
     # name is given as:
     #
-    # ``data``/<project>/<subject>/<session>/``scan``/<number>/``series``<number>``_``<scan_type>``.nii.gz``
+    # ``data/``*project*``/``*subject*``/``*session*``/scan/``*number*``/series``*number*``_``*type*``.nii.gz``
+    #
+    # where:
+    # * *number* is the series number
+    # * *type* is the scan type
     #
     # e.g.::
     #
@@ -522,11 +534,15 @@ def _create_scan_filenames(subject, session_number, series, scan_type):
             for series in series]
 
 
-def _create_registration_filenames(subject, session_number, resource, series):
+def _create_registration_filenames(subject, session_number, name, series):
     # Creates the file names for the given resource and series list. The file is
     # name is given as:
     #
-    # ``data``/<project>/<subject>/<session>/``resource``/<resource>/``series``<number>``.nii.gz``
+    # ``data/``*project*``/``*subject*``/``*session*``/resource/``*name*``/series``*number*``.nii.gz``
+    #
+    # where:
+    # * *name* is the resource name
+    # * *number* is the series number
     #
     # e.g.::
     #
@@ -534,10 +550,10 @@ def _create_registration_filenames(subject, session_number, resource, series):
     #
     # @param subject the parent subject
     # @param session_number the session number
-    # @param resource the resource name
+    # @param name the registration name
     # @param series the series array
     # @return the file name array
-    return [_resource_filename(subject, session_number, resource, series.number)
+    return [_registration_filename(subject, session_number, series.number, name)
             for series in series]
 
 
@@ -557,15 +573,62 @@ def _scan_filename(subject, session_number, series_number, scan_type):
                         session_number, series_number, series_number, scan_type)
 
 
+def _registration_filename(subject, session_number, series, name):
+    resource = "reg_%s" % name
+    filename = REG_FILE_TMPL % series
+
+    return _resource_filename(subject, session_number, resource, filename)
+
+
 def _resource_filename(subject, session_number, resource, filename):
     return RESOURCE_TMPL % (subject.project, subject.collection,
                             subject.number, session_number, resource, filename)
 
+SPLITEXT_PAT = re.compile("""
+    (.*?)           # The file path without the extension
+    (               # The extension group
+        (\.\w+)+    # The (possibly composite) extension
+    )?              # The extension is optional
+    $               # Anchor to the end of the file path
+    """, re.VERBOSE)
+"""
+Regexp pattern that splits the name and extension.
 
-def _registration_filename(subject, session_number, resource, series):
-    filename = REG_FILE_TMPL % series
+:see: :meth:`splitexts`
+"""
 
-    return _resource_filename(subject, session_number, resource, filename)
+
+def splitexts(path):
+    """
+    Splits the given file path into a name and extension.
+    Unlike ``os.path.splitext``, the resulting extension can be composite.
+    
+    Example:
+    
+    >>> import os
+    >>> os.path.splitext('/tmp/foo.nii.gz')
+    ('/tmp/foo.nii', '.gz')
+    >>> from qiutil.file_helper import splitexts
+    >>> splitexts('/tmp/foo.3/bar.nii.gz')
+    ('/tmp/foo.3/bar', '.nii.gz')
+    
+    This function is lifted from the ``qiutil`` project.
+    
+    :param path: the file path
+    :return: the *(prefix, extensions)* tuple
+    """
+    matches = SPLITEXT_PAT.match(path).groups()[:2]
+    # Pad with an empty extension, if necessary.
+    matches += (None,) * (2 - len(matches))
+    
+    return tuple(matches)
+
+
+def _create_label_map(modeling_file):
+    base, ext = splitexts(modeling_file)
+    label_map = base + '_color' + ext
+    
+    return LabelMap(filename=label_map, color_table=COLOR_TABLE_FILE_NAME)
 
 
 def _create_intensity(count, bolus_arrival_index):

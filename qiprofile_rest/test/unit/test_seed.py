@@ -98,8 +98,7 @@ class TestSeed(object):
                                     (subject, session.number, len(scans)))
         
         # The T1 scan
-        t1_scan = next((scan for scan in scans if scan.scan_type == 't1'),
-                       None)
+        t1_scan = scans.get('t1', None)
         assert_is_not_none(t1_scan, "%s session %d is missing the T1 scan" %
                                         (subject, session.number))
         scan_intensity = t1_scan.intensity
@@ -107,7 +106,7 @@ class TestSeed(object):
                                            " intensity" % (subject, session.number))
         
         # Validate the registration.
-        regs = session.detail.registrations 
+        regs = t1_scan.registrations
         assert_equal(len(regs), 1, "%s session %d registrations count is incorrect:"
                                    " %d" %(subject, session.number, len(regs)))
         reg = regs[0]
@@ -155,16 +154,16 @@ class TestSeed(object):
                            "%s session %d scan modeling %s is missing a"
                            " delta_k_trans filename" %
                            (subject, session.number, mdl.name))
-        colorization = delta_k_trans.colorization
-        assert_is_not_none(colorization,
+        label_map = delta_k_trans.label_map
+        assert_is_not_none(label_map,
                            "%s session %d scan modeling %s is missing a"
-                           " colorization" % (subject, session.number, mdl.name))
-        assert_is_not_none(colorization.filename,
-                           "%s session %d scan modeling %s colorization is"
-                           " missing a filename" % (subject, session.number, mdl.name))
-        assert_is_not_none(colorization.color_lut,
-                           "%s session %d scan modeling %s colorization is"
-                           " missing a LUT" % (subject, session.number, mdl.name))
+                           " label_map" % (subject, session.number, mdl.name))
+        assert_is_not_none(label_map.filename,
+                           "%s session %d scan modeling %s label map is"
+                           " missing a file name" % (subject, session.number, mdl.name))
+        assert_is_not_none(label_map.color_table,
+                           "%s session %d scan modeling %s label map is"
+                           " missing a color table" % (subject, session.number, mdl.name))
         
         v_e = mdl.v_e
         assert_is_not_none(v_e, "%s session %d scan modeling %s is missing"
@@ -188,11 +187,11 @@ class TestSeed(object):
                                            " is missing a tau_i filename" %
                                            (subject, session.number, mdl.name))
 
-        assert_true(not not session.detail.registrations,
+        assert_true(not not t1_scan.registrations,
                "%s session %d registration is missing a registration" %
                (subject, session.number))
-        reg = session.detail.registrations[0]
-        assert_equal(reg.name, "reg_%02d" % session.number,
+        reg = t1_scan.registrations[0]
+        assert_equal(reg.name, "%02d" % session.number,
                      "%s session %d registration name incorrect: %s" %
                      (subject, session.number, reg.name))
         assert_equal(reg.parameters, seed.REG_PARAMS,
