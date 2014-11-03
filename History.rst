@@ -1,9 +1,13 @@
 This history lists major release themes. See the GitHub commits
 (http://quip1:6060/qiprofile-rest) for change details.
 
+2.2.1 / 2014-11-03
+------------------
+* Add T2 scans.
+
 2.1.11 / 2014-10-02
 ------------------
-* Add colorization.
+* Add label_map.
 
 2.1.10 / 2014-10-02
 ------------------
