@@ -3,7 +3,7 @@ from nose.tools import (assert_is_none, assert_is_instance, assert_in,
 from datetime import datetime
 from mongoengine import connect
 from mongoengine.connection import get_db
-from qiprofile_rest.models import Subject
+from qiprofile_rest.models import (Subject, Assessment, Biopsy, Surgery)
 from qiprofile_rest.test.helpers import seed
 
 class TestSeed(object):
@@ -36,7 +36,8 @@ class TestSeed(object):
     )
  
     def _validate_subject(self, subject):
-        assert_in(subject.collection, ['Breast', 'Sarcoma'],
+        collections = ((coll.name for coll in seed.COLLECTIONS))
+        assert_in(subject.collection, collections,
                   "Collection is invalid: %s" % subject.collection)
         assert_is_not_none(subject.detail, "%s is missing detail" % subject)
         assert_is_not_none(subject.detail.sessions, "%s has no sessions" % subject)
@@ -56,24 +57,24 @@ class TestSeed(object):
         assert_equal(len(encounters), 3,
                      "%s session %d encounter count is incorrect: %d" %
                      (subject, session.number, len(encounters)))
-        biopsy = next((enc for enc in encounters if enc.encounter_type == 'Biopsy'),
+        biopsy = next(((enc for enc in encounters if isinstance(enc, Biopsy))),
                       None)
         assert_is_not_none(biopsy, "%s session %d is missing a biopsy" %
                                    (subject, session.number))
-        path = biopsy.evaluation
+        path = biopsy.pathology
         assert_is_not_none(path, "%s biopsy is missing a pathology report" %
                                  subject)
         assert_is_not_none(path.tnm, "%s biopsy pathology report is missing"
                                      " a TNM" % subject)
         assert_is_not_none(path.tnm.tumor_type, "%s biopsy TNM is missing the"
                                      " tumor type" % subject)
-        surgery = next((enc for enc in encounters if enc.encounter_type == 'Surgery'),
+        surgery = next(((enc for enc in encounters if isinstance(enc, Surgery))),
                       None)
         assert_is_not_none(surgery, "%s session %d is missing a surgery" %
                                      (subject, session.number))
-        assert_is_none(surgery.evaluation,
+        assert_is_none(surgery.pathology,
                      "%s surgery incorrectly has an evaluation" % subject)
-        post_trt = next((enc for enc in encounters if enc.encounter_type == 'Assessment'),
+        post_trt = next(((enc for enc in encounters if isinstance(enc, Assessment))),
                       None)
         assert_is_not_none(post_trt, "%s session %d is missing an assessment" %
                                      (subject, session.number))

@@ -1,5 +1,5 @@
 """
-The qiprofile Mongodb data mongoengine.
+The qiprofile Mongodb data model.
 """
 
 import re
@@ -245,20 +245,139 @@ class Treatment(mongoengine.EmbeddedDocument):
     begin_date = fields.DateTimeField(required=True)
 
     end_date = fields.DateTimeField(required=True)
+    
+    drug_courses = fields.ListField(
+        field=mongoengine.EmbeddedDocumentField('DrugCourse')
+    )
+
+
+class DrugCourse(mongoengine.EmbeddedDocument):
+    
+    drug_name = fields.StringField(required=True)
+    
+    administration = fields.ListField(
+        field=mongoengine.EmbeddedDocumentField('DrugAdministration')
+    )
+
+
+class DrugAdministration(mongoengine.EmbeddedDocument):
+    
+    date = fields.DateTimeField()
+    
+    dosage = fields.EmbeddedDocumentField('Measurement')
+
+
+class Measurement(mongoengine.EmbeddedDocument):
+    
+    value = fields.EmbeddedDocumentField('Value', required=True)
+    
+    unit = fields.EmbeddedDocumentField('Unit', required=True)
+    
+    # A unit factor, e.g. unit=WeightUnit(), per_unit = WeightUnit(scale='k'),
+    # and value = 12 implies the dosage is 2mg/kg, where the kg is the
+    # patient weight.
+    per_unit = fields.EmbeddedDocumentField('Unit')
+
+
+class Unit(mongoengine.EmbeddedDocument):
+
+    meta = dict(allow_inheritance=True)
+
+
+class ExtentUnit(Unit):
+
+    SCALES = ['c', 'm']
+
+    # The meter designator.
+    base = fields.StringField(default='m')
+    
+    # The scale defaults to millimeter.
+    scale = fields.StringField(choices=SCALES, default='m')
+
+
+class WeightUnit(Unit):
+
+    SCALES = ['c', 'm', 'k']
+
+    # The gram designator.
+    base = fields.StringField(default='g')
+    
+    # The scale defaults to milligram.
+    scale = fields.StringField(choices=SCALES, default='m')
+
+
+class VolumeUnit(Unit):
+
+    SCALES = ['m']
+
+    # The liter designator.
+    base = fields.StringField(default='l')
+    
+    # The scale defaults to milliliter.
+    scale = fields.StringField(choices=SCALES, default='m')
+
+
+class Value(mongoengine.EmbeddedDocument):
+
+    meta = dict(allow_inheritance=True)
+
+
+class StringValue(Value):
+
+    value = fields.StringField(required=True)
+
+
+class NumericValue(Value):
+
+    meta = dict(allow_inheritance=True)
+
+
+class IntValue(NumericValue):
+    
+    value = fields.IntField(required=True)
+
+
+class FloatValue(NumericValue):
+    
+    value = fields.FloatField(required=True)
 
 
 class Encounter(mongoengine.EmbeddedDocument):
     """The patient clinical encounter, e.g. biopsy."""
 
-    TYPE_CHOICES = ('Assessment', 'Biopsy', 'Surgery')
-
-    encounter_type = fields.StringField(
-        max_length=choices.max_length(TYPE_CHOICES),
-        choices=TYPE_CHOICES)
+    meta = dict(allow_inheritance=True)
 
     date = fields.DateTimeField(required=True)
 
-    evaluation = fields.EmbeddedDocumentField('Evaluation')
+
+class Assessment(Encounter):
+    """Generic collection of outcomes."""
+
+    evaluation = fields.EmbeddedDocumentField('GenericEvaluation')
+
+
+class Biopsy(Encounter):
+    """Non-therapeutic tissue extraction resulting in a pathology report."""
+
+    pathology = fields.EmbeddedDocumentField('Pathology', required=True)
+
+
+class Surgery(Encounter):
+    """Therapeutic tissue extraction which usually results in a pathology report."""
+
+    meta = dict(allow_inheritance=True)
+
+    pathology = fields.EmbeddedDocumentField('Pathology')
+
+
+class BreastSurgery(Surgery):
+    """Breast tumor extraction."""
+
+    TYPE_CHOICES = ('Mastectomy', 'Lumpectomy')
+
+    surgery_type = fields.StringField(
+        max_length=choices.max_length(TYPE_CHOICES),
+        choices=TYPE_CHOICES)
 
 
 class Evaluation(mongoengine.EmbeddedDocument):
@@ -271,12 +390,6 @@ class GenericEvaluation(Evaluation):
     """An unconstrained set of outcomes."""
 
     outcomes = fields.ListField(fields.EmbeddedDocumentField('Outcome'))
-
-
-class Outcome(mongoengine.EmbeddedDocument):
-    """The patient clinical outcome."""
-
-    meta = dict(allow_inheritance=True)
 
 
 class Pathology(Evaluation):
@@ -326,6 +439,12 @@ class SarcomaPathology(Pathology):
 
 
 ## Clinical metrics ##
+
+class Outcome(mongoengine.EmbeddedDocument):
+    """The patient clinical outcome."""
+
+    meta = dict(allow_inheritance=True)
+
 
 class TNM(Outcome):
     """

@@ -10,14 +10,138 @@ from mongoengine import connect
 from qiprofile_rest import choices
 from qiprofile_rest.models import (Subject, SubjectDetail, Session, SessionDetail,
                                    Modeling, ModelingParameter, LabelMap, Series,
-                                   Scan, Registration, Intensity, Probe,  Treatment,
-                                   Encounter, GenericEvaluation, BreastPathology, SarcomaPathology,
-                                   TNM, NottinghamGrade, FNCLCCGrade, NecrosisPercentValue,
+                                   Scan, Registration, Intensity, Probe, Treatment,
+                                   DrugCourse, DrugAdministration, Measurement,
+                                   IntValue, WeightUnit, Biopsy, Surgery,
+                                   Assessment, GenericEvaluation, BreastPathology,
+                                   SarcomaPathology, TNM, NottinghamGrade,
+                                   FNCLCCGrade, NecrosisPercentValue,
                                    NecrosisPercentRange, HormoneReceptorStatus)
 
 PROJECT = 'QIN_Test'
 
-COLLECTIONS = ['Breast', 'Sarcoma']
+class Collection(object):
+    def __init__(self, name, visit_count, series_numbers):
+        self.name = name
+        self.visit_count = visit_count
+        self.series_numbers = series_numbers
+
+
+class Breast(Collection):
+    SERIES_NUMBERS = [7, 8] + [11 + 2*n for n in range(0, 30)]
+    """
+    The  Breast series numbers are 7, 8, 11, 13, ..., 69.
+    There are 32 AIRC Breast scans.
+    """
+    def __init__(self):
+        super(Breast, self).__init__(name='Breast', visit_count=4,
+                                     series_numbers=Breast.SERIES_NUMBERS)
+
+    def create_grade(self):
+        """
+        @return the Nottingham grade
+        """
+        tubular_formation = _random_int(1, 3)
+        nuclear_pleomorphism = _random_int(1, 3)
+        mitotic_count = _random_int(1, 3)
+
+        return NottinghamGrade(tubular_formation=tubular_formation,
+                                     nuclear_pleomorphism=nuclear_pleomorphism,
+                                     mitotic_count=mitotic_count)
+
+    def create_pathology(self):
+        # The TNM score.
+        tnm = _create_tnm(self, 'p')
+
+        # The estrogen status.
+        positive = _random_boolean()
+        quick_score = _random_int(0, 8)
+        intensity = _random_int(0, 100)
+        estrogen = HormoneReceptorStatus(hormone='estrogen',
+                                         positive=positive,
+                                         quick_score=quick_score,
+                                         intensity=intensity)
+
+        # The progestrogen status.
+        positive = _random_boolean()
+        quick_score = _random_int(0, 8)
+        intensity = _random_int(0, 100)
+        progestrogen = HormoneReceptorStatus(hormone='progestrogen',
+                                             positive=positive,
+                                             quick_score=quick_score,
+                                             intensity=intensity)
+
+        # HER2 NEU IHC is one of 0, 1, 2, 3.
+        her2_neu_ihc = _random_int(0, 3)
+
+        # HER2 NEU FISH is True (positive) or False (negative).
+        her2_neu_fish = _random_boolean()
+
+        # KI67 is a percent.
+        ki_67 = _random_int(0, 100)
+
+        return BreastPathology(tnm=tnm, estrogen=estrogen,
+                               progestrogen=progestrogen,
+                               her2_neu_ihc=her2_neu_ihc,
+                               her2_neu_fish=her2_neu_fish,
+                               ki_67=ki_67)
+
+class Sarcoma(Collection):
+    SERIES_NUMBERS = [9, 10] + [13 + 2*n for n in range(0, 38)]
+    """
+    The Sarcoma series numbers are 9, 10, 13, 15, ..., 87.
+    There are 40 AIRC Sarcoma001 Session01 series.
+
+    Note: the AIRC Sarcoma scan count and numbering scheme varies.
+    """
+
+    def __init__(self):
+        super(Sarcoma, self).__init__(name='Sarcoma', visit_count=3,
+                                     series_numbers=Sarcoma.SERIES_NUMBERS)
+
+    def create_grade(self):
+        """
+        @return the FNCLCC grade
+        """
+        differentiation = _random_int(1, 3)
+        mitotic_count = _random_int(1, 3)
+        necrosis = _random_int(0, 2)
+
+        return FNCLCCGrade(differentiation=differentiation, mitotic_count=mitotic_count,
+                           necrosis=necrosis)
+        
+    def create_pathology(self):
+        # The TNM score.
+        tnm = _create_tnm(self, 'p')
+
+        # The tumor site.
+        site = 'Thigh'
+
+        # The necrosis percent is either a value or a decile range.
+        if _random_boolean():
+            value = _random_int(0, 100)
+            necrosis_pct = NecrosisPercentValue(value=value)
+        else:
+            low = _random_int(0, 9) * 10
+            start = NecrosisPercentRange.LowerBound(value=low)
+            stop = NecrosisPercentRange.UpperBound(value=low+10)
+            necrosis_pct = NecrosisPercentRange(start=start, stop=stop)
+
+        # The histology                                      
+        histology = 'Fibrosarcoma'
+
+        return SarcomaPathology(tnm=tnm, site=site, necrosis_pct=necrosis_pct,
+                                histology=histology)
+
+
+COLLECTIONS = [Breast(), Sarcoma()]
+
+def collection_for(name):
+    try:
+        return next((coll for coll in COLLECTIONS if coll.name == name))
+    except StopIteration:
+        raise ValueError("The collection is not supported: %s" % name)
+
 
 DATE_0 = datetime(2013, 1, 4, tzinfo=pytz.utc)
 """The first image acquisition date."""
@@ -107,13 +231,13 @@ def _seed_subject(collection, subject_number):
     subject is ignored. Otherwise, a new subject is created
     and populated with detail information.
 
-    @param collection: the subject collection name
+    @param collection: the subject collection
     @param subject_number: the subject number
     @return: the subject with the given collection and number
     """
     try:
         sbj = Subject.objects.get(number=subject_number, project=PROJECT,
-                                  collection=collection)
+                                  collection=collection.name)
     except Subject.DoesNotExist:
         sbj = _create_subject(collection, subject_number)
 
@@ -122,13 +246,14 @@ def _seed_subject(collection, subject_number):
 
 def _create_subject(collection, subject_number):
     subject = Subject(number=subject_number, project=PROJECT,
-                      collection=collection)
-    detail = _create_subject_detail(subject)
+                      collection=collection.name)
+    detail = _create_subject_detail(collection, subject)
     detail.save()
     subject.detail = detail
     subject.save()
 
     return subject
+
 
 ETHNICITY_INCIDENCE = [15, 85]
 """
@@ -142,9 +267,7 @@ The rough US race incidence for the respective race choices.
 The incidences sum to 100.
 """
 
-T2_SESSION_PAT = "Se"
-
-def _create_subject_detail(subject):
+def _create_subject_detail(collection, subject):
     # The patient demographics.
     yr = _random_int(1950, 1980)
     birth_date = datetime(yr, 7, 7, tzinfo=pytz.utc)
@@ -154,14 +277,10 @@ def _create_subject_detail(subject):
     ethnicity = _choose_ethnicity()
 
     # Make the sessions.
-    if subject.collection == 'Breast':
-        session_cnt = 4
-    elif subject.collection == 'Sarcoma':
-        session_cnt = 3
-    else:
-        raise ValueError("Collection type not recognized: %s" % collection)
+    session_cnt = collection.visit_count
     # The sessions.
-    sessions = [_create_session(subject, sess_nbr) for sess_nbr in range(1, session_cnt + 1)]
+    sessions = [_create_session(collection, subject, sess_nbr)
+                for sess_nbr in range(1, session_cnt + 1)]
 
     # The neodjuvant treatment starts a few days after the first visit.
     offset = _random_int(0, 3)
@@ -171,6 +290,17 @@ def _create_subject_detail(subject):
     neo_tx_end = sessions[-1].acquisition_date - timedelta(days=offset)
     neo_tx = Treatment(treatment_type='Neoadjuvant', begin_date=neo_tx_begin,
                            end_date=neo_tx_end)
+    # Breast has neodjuvant drugs.
+    if isinstance(collection, Breast):
+        dosage = Measurement(value=IntValue(value=2), unit=WeightUnit(),
+                             per_unit=WeightUnit(scale='k'))
+        drug_admin = DrugAdministration(dosage=dosage)
+        trastuzumab = DrugCourse(drug_name='trastuzumab', administration=[drug_admin])
+        dosage = Measurement(value=IntValue(value=6), unit=WeightUnit(),
+                             per_unit=WeightUnit(scale='k'))
+        drug_admin = DrugAdministration(dosage=dosage)
+        pertuzumab = DrugCourse(drug_name='pertuzumab', administration=[drug_admin])
+        neo_tx.drug_courses = [trastuzumab, pertuzumab]
     
     # The primary treatment (surgery) is a few days after the last scan.
     offset = _random_int(0, 10)
@@ -193,21 +323,19 @@ def _create_subject_detail(subject):
     biopsy_date = sessions[0].acquisition_date - timedelta(days=offset)
     
     # The biopsy has a pathology report.
-    biopsy_path = _create_pathology(subject.collection)
-    biopsy = Encounter(encounter_type='Biopsy', date=biopsy_date,
-                       evaluation=biopsy_path)
+    biopsy_path = collection.create_pathology()
+    biopsy = Biopsy(date=biopsy_date, pathology=biopsy_path)
 
     # The surgery doesn't have an outcome.
-    surgery = Encounter(encounter_type='Surgery', date=surgery_date)
+    surgery = Surgery(date=surgery_date)
 
     # The post-surgery assessment.
     offset = _random_int(3, 13)
     assessment_date = surgery_date + timedelta(days=offset)
     # The post-surgery evaluation has a TNM.
-    assessment_tnm = _create_tnm(subject.collection)
+    assessment_tnm = _create_tnm(collection)
     evaluation = GenericEvaluation(outcomes=[assessment_tnm])
-    assessment = Encounter(encounter_type='Assessment', date=assessment_date,
-                           evaluation=evaluation)
+    assessment = Assessment(date=assessment_date, evaluation=evaluation)
     encounters = [biopsy, surgery, assessment]
 
     # Make the subject detail.
@@ -241,129 +369,29 @@ def _choose_ethnicity():
             # The first item in the ethnicity tuple is the database value,
             # the second is the display value.
             return choices.ETHNICITY_CHOICES[i][0]
-    
-
-def _create_pathology(collection):
-    if collection == 'Breast':
-        return _create_breast_pathology()
-    elif collection == 'Sarcoma':
-        return _create_sarcoma_pathology()
-    else:
-        raise ValueError("Collection type not recognized: %s" % collection)
-
-
-def _create_breast_pathology():
-    # The TNM score.
-    tnm = _create_tnm('Breast', 'p')
-
-    # The estrogen status.
-    positive = _random_boolean()
-    quick_score = _random_int(0, 8)
-    intensity = _random_int(0, 100)
-    estrogen = HormoneReceptorStatus(hormone='estrogen',
-                                     positive=positive,
-                                     quick_score=quick_score,
-                                     intensity=intensity)
-
-    # The progestrogen status.
-    positive = _random_boolean()
-    quick_score = _random_int(0, 8)
-    intensity = _random_int(0, 100)
-    progestrogen = HormoneReceptorStatus(hormone='progestrogen',
-                                         positive=positive,
-                                         quick_score=quick_score,
-                                         intensity=intensity)
-
-    # HER2 NEU IHC is one of 0, 1, 2, 3.
-    her2_neu_ihc = _random_int(0, 3)
-
-    # HER2 NEU FISH is True (positive) or False (negative).
-    her2_neu_fish = _random_boolean()
-
-    # KI67 is a percent.
-    ki_67 = _random_int(0, 100)
-
-    return BreastPathology(tnm=tnm, estrogen=estrogen,
-                           progestrogen=progestrogen,
-                           her2_neu_ihc=her2_neu_ihc,
-                           her2_neu_fish=her2_neu_fish,
-                           ki_67=ki_67)
-
-
-def _create_sarcoma_pathology():
-    # The TNM score.
-    tnm = _create_tnm('Sarcoma', 'p')
-
-    # The tumor site.
-    site = 'Thigh'
-
-    # The necrosis percent is either a value or a decile range.
-    if _random_boolean():
-        value = _random_int(0, 100)
-        necrosis_pct = NecrosisPercentValue(value=value)
-    else:
-        low = _random_int(0, 9) * 10
-        start = NecrosisPercentRange.LowerBound(value=low)
-        stop = NecrosisPercentRange.UpperBound(value=low+10)
-        necrosis_pct = NecrosisPercentRange(start=start, stop=stop)
-
-    # The histology                                      
-    histology = 'Fibrosarcoma'
-
-    return SarcomaPathology(tnm=tnm, site=site, necrosis_pct=necrosis_pct,
-                            histology=histology)
 
 
 def _create_tnm(collection, prefix=None):
-    if collection == 'Breast':
-        grade = _create_breast_grade()
-    elif collection == 'Sarcoma':
-        grade = _create_sarcoma_grade()
-    else:
-        raise ValueError("Collection type not recognized: %s" % collection)
+    grade = collection.create_grade()
     
-    tumor_size_max = TNM.Size.tumor_size_choices(collection)[-1]
+    tumor_size_max = TNM.Size.tumor_size_choices(collection.name)[-1]
     tumor_size = _random_int(1, tumor_size_max)
-    suffix_choices = TNM.Size.suffix_choices(collection)
+    suffix_choices = TNM.Size.suffix_choices(collection.name)
     suffix_ndx = _random_int(-1, len(suffix_choices) - 1)
     if suffix_ndx < 0:
         suffix = None
     else:
         suffix = suffix_choices[suffix_ndx]
     size = TNM.Size(prefix=prefix, tumor_size=tumor_size, suffix=suffix)
-    lymph_status_max = TNM.lymph_status_choices(collection)[-1]
+    lymph_status_max = TNM.lymph_status_choices(collection.name)[-1]
     lymph_status = _random_int(0, lymph_status_max)
     metastasis = _random_boolean()
     invasion = _random_boolean()
 
-    return TNM(tumor_type=collection, grade=grade, size=size,
+    return TNM(tumor_type=collection.name, grade=grade, size=size,
                lymph_status=lymph_status, metastasis=metastasis,
                lymphatic_vessel_invasion=invasion)
 
-
-def _create_breast_grade():
-    """
-    @return the Nottingham grade
-    """
-    tubular_formation = _random_int(1, 3)
-    nuclear_pleomorphism = _random_int(1, 3)
-    mitotic_count = _random_int(1, 3)
-
-    return NottinghamGrade(tubular_formation=tubular_formation,
-                                 nuclear_pleomorphism=nuclear_pleomorphism,
-                                 mitotic_count=mitotic_count)
-
-
-def _create_sarcoma_grade():
-    """
-    @return the FNCLCC grade
-    """
-    differentiation = _random_int(1, 3)
-    mitotic_count = _random_int(1, 3)
-    necrosis = _random_int(0, 2)
-
-    return FNCLCCGrade(differentiation=differentiation, mitotic_count=mitotic_count,
-                       necrosis=necrosis)
 
 FXL_K_TRANS_FILE_NAME = 'fxl_k_trans.nii.gz'
 
@@ -377,14 +405,14 @@ TAU_I_FILE_NAME = 'tau_i_trans.nii.gz'
 
 COLOR_TABLE_FILE_NAME = 'etc/jet_colors.txt'
 
-def _create_session(subject, session_number):
+def _create_session(collection, subject, session_number):
     # Stagger the inter-session duration.
     date = _create_session_date(subject, session_number)
 
     # The bolus arrival.
     arv = int(round((0.5 - random.random()) * 4)) + AVG_BOLUS_ARRIVAL_NDX
     # Make the series list.
-    series = _create_all_series(subject.collection)
+    series = _create_all_series(collection)
     # Make the scans.
     t1_scan = _create_t1_scan(subject, session_number, series, arv)
     t2_scan = _create_t2_scan(subject, session_number, series, arv)
@@ -461,30 +489,10 @@ def _create_session_date(subject, session_number):
     return DATE_0 + timedelta(days=offset)
 
 
-BREAST_SERIES_NUMBERS = [7, 8] + [11 + 2*n for n in range(0, 30)]
-"""
-The  Breast series numbers are 7, 8, 11, 13, ..., 69.
-There are 32 AIRC Breast scans.
-"""
-
-SARCOMA_SERIES_NUMBERS = [9, 10] + [13 + 2*n for n in range(0, 38)]
-"""
-The Sarcoma series numbers are 9, 10, 13, 15, ..., 87.
-There are 40 AIRC Sarcoma001 Session01 series.
-
-Note: the AIRC Sarcoma scan count and numbering scheme varies.
-"""
-
-SERIES_NUMBERS = dict(
-    Breast=BREAST_SERIES_NUMBERS,
-    Sarcoma=SARCOMA_SERIES_NUMBERS
-)
-
-
 def _create_all_series(collection):
     # @param collection the Breast or Sarcoma collection
     # @returns an array of series objects
-    return [Series(number=number) for number in SERIES_NUMBERS[collection]]
+    return [Series(number=number) for number in collection.series_numbers]
 
 
 def _create_t1_scan(subject, session_number, series, bolus_arrival_index):
