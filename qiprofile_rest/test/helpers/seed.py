@@ -9,13 +9,12 @@ from decimal import Decimal
 from mongoengine import connect
 from qiprofile_rest import choices
 from qiprofile_rest.models import (Subject, SubjectDetail, Session, SessionDetail,
-                                   Modeling, ModelingParameter, LabelMap, Series,
-                                   Scan, Registration, Intensity, Probe, Treatment,
-                                   DrugCourse, DrugAdministration, Measurement,
-                                   IntValue, WeightUnit, Biopsy, Surgery,
-                                   Assessment, GenericEvaluation, BreastPathology,
-                                   SarcomaPathology, TNM, NottinghamGrade,
-                                   FNCLCCGrade, NecrosisPercentValue,
+                                   Modeling, ModelingResult, ModelingParameter,
+                                   LabelMap, Series, Scan, ScanSet, Registration,
+                                   Intensity, Probe, Treatment, Drug, Dosage,
+                                   Measurement, Weight,Biopsy, Surgery, Assessment,
+                                   GenericEvaluation, BreastPathology, SarcomaPathology,
+                                   TNM, NottinghamGrade, FNCLCCGrade, NecrosisPercentValue,
                                    NecrosisPercentRange, HormoneReceptorStatus)
 
 PROJECT = 'QIN_Test'
@@ -165,7 +164,6 @@ AVG_BOLUS_ARRIVAL_NDX = 2
 """Bolus arrivals are spread evenly around the third visit."""
 
 REG_PARAMS = dict(
-    algorithm='ANTS',
     transforms='[Rigid, Affine, SyN]',
     metric='[MI, MI, CC]',
     metric_weight='[1, 1, 1]',
@@ -177,6 +175,7 @@ REG_PARAMS = dict(
     shrink_factors='[[8,4,2,1], [8,4,2,1], [4,2,1]]',
     transform_parameters='[(0.1,), (0.1,), (0.1, 3, 0)]'
 )
+
 
 def seed():
     """
@@ -273,13 +272,39 @@ def _create_subject_detail(collection, subject):
     birth_date = datetime(yr, 7, 7, tzinfo=pytz.utc)
     # Only show one race.
     races = [_choose_race()]
-    # The ethnicity, which is None half of the time.
+    # The ethnicity is None half of the time.
     ethnicity = _choose_ethnicity()
+    # The gender is roughly split.
+    gender = _choose_gender(collection)
+    # The weight is 100-200.
+    weight = _random_int(100, 200)
 
     # Make the sessions.
     session_cnt = collection.visit_count
+    
+    # The scan sets.
+    scan_sets = {scan_type: ScanSet() for scan_type in Scan.SCAN_TYPES}
+
+    # The registration configuration dictionary key.
+    reg_cfg_key = "reg_7uPvs%02d" % subject.number
+
+    # The modeling input parameters.
+    mdl_params = dict(r1_0_val=0.7, baseline_end_idx=1)
+    # The modeling object.
+    modeling = Modeling(input_parameters=mdl_params,
+                        results=[])
+    
+    # The registration configuration.
+    reg_cfg = Registration.Configuration(
+        algorithm = 'ANTS',
+        parameters=REG_PARAMS,
+        modeling=modeling
+    )
+    reg_cfg_dict = {reg_cfg_key: reg_cfg}
+    
     # The sessions.
-    sessions = [_create_session(collection, subject, sess_nbr)
+    sessions = [_create_session(collection, subject, sess_nbr,
+                                scan_sets.keys(), reg_cfg_dict)
                 for sess_nbr in range(1, session_cnt + 1)]
 
     # The neodjuvant treatment starts a few days after the first visit.
@@ -289,18 +314,23 @@ def _create_subject_detail(collection, subject):
     offset = _random_int(0, 3)
     neo_tx_end = sessions[-1].acquisition_date - timedelta(days=offset)
     neo_tx = Treatment(treatment_type='Neoadjuvant', begin_date=neo_tx_begin,
-                           end_date=neo_tx_end)
-    # Breast has neodjuvant drugs.
+                       end_date=neo_tx_end)
+    
+    # Breast patients have neodjuvant drugs.
     if isinstance(collection, Breast):
-        dosage = Measurement(value=IntValue(value=2), unit=WeightUnit(),
-                             per_unit=WeightUnit(scale='k'))
-        drug_admin = DrugAdministration(dosage=dosage)
-        trastuzumab = DrugCourse(drug_name='trastuzumab', administration=[drug_admin])
-        dosage = Measurement(value=IntValue(value=6), unit=WeightUnit(),
-                             per_unit=WeightUnit(scale='k'))
-        drug_admin = DrugAdministration(dosage=dosage)
-        pertuzumab = DrugCourse(drug_name='pertuzumab', administration=[drug_admin])
-        neo_tx.drug_courses = [trastuzumab, pertuzumab]
+        # trastuzumab.
+        trast = Drug(name='trastuzumab')
+        amt = .002 * subject.number
+        trast_amt = Measurement(amount=amt, unit=Weight(), per_unit=Weight(scale='k'))
+        trast_dosage = Dosage(agent=trast, amount=trast_amt)
+        
+        # pertuzumab.
+        pert = Drug(name='pertuzumab')
+        amt = .006 * subject.number
+        pert_amt = Measurement(amount=amt, unit=Weight(), per_unit=Weight(scale='k'))
+        pert_dosage = Dosage(agent=pert, amount=pert_amt)
+        
+        neo_tx.dosages = [trast_dosage, pert_dosage]
     
     # The primary treatment (surgery) is a few days after the last scan.
     offset = _random_int(0, 10)
@@ -339,9 +369,11 @@ def _create_subject_detail(collection, subject):
     encounters = [biopsy, surgery, assessment]
 
     # Make the subject detail.
-    return SubjectDetail(birth_date=birth_date, races=races,
-                         ethnicity=ethnicity, encounters=encounters,
-                         treatments=treatments, sessions=sessions)
+    return SubjectDetail(birth_date=birth_date, races=races, gender=gender,
+                         weight=weight, ethnicity=ethnicity,
+                         encounters=encounters, treatments=treatments,
+                         sessions=sessions, scan_sets=scan_sets,
+                         registration_configurations=reg_cfg_dict)
 
 
 def _choose_race():
@@ -358,9 +390,6 @@ def _choose_race():
 
 
 def _choose_ethnicity():
-    # Half the subjects don't specify the ethnicity.
-    if _random_boolean():
-        return None
     offset = _random_int(0, 99)
     n = 0
     for i, proportion in enumerate(ETHNICITY_INCIDENCE):
@@ -369,6 +398,15 @@ def _choose_ethnicity():
             # The first item in the ethnicity tuple is the database value,
             # the second is the display value.
             return choices.ETHNICITY_CHOICES[i][0]
+
+
+def _choose_gender(collection):
+    if collection.name == 'Breast':
+        return 'Female'
+    else:
+        # Half of the sarcoma subjects are male, half female.
+        index = _random_int(0, 1)
+        return choices.GENDER_CHOICES[index][0]
 
 
 def _create_tnm(collection, prefix=None):
@@ -405,7 +443,8 @@ TAU_I_FILE_NAME = 'tau_i_trans.nii.gz'
 
 COLOR_TABLE_FILE_NAME = 'etc/jet_colors.txt'
 
-def _create_session(collection, subject, session_number):
+def _create_session(collection, subject, session_number,
+                    scan_types, reg_cfg_dict):
     # Stagger the inter-session duration.
     date = _create_session_date(subject, session_number)
 
@@ -414,9 +453,10 @@ def _create_session(collection, subject, session_number):
     # Make the series list.
     series = _create_all_series(collection)
     # Make the scans.
-    t1_scan = _create_t1_scan(subject, session_number, series, arv)
+    t1_scan = _create_t1_scan(subject, session_number, series, arv,
+                              reg_cfg_dict)
     t2_scan = _create_t2_scan(subject, session_number, series, arv)
-    scans = {t1_scan.name: t1_scan, t2_scan.name: t2_scan}
+    scans = dict(t1=t1_scan, t2=t2_scan)
     # Make the session detail.
     detail = SessionDetail(bolus_arrival_index=arv, series=series,
                            scans=scans)
@@ -424,23 +464,27 @@ def _create_session(collection, subject, session_number):
     detail.save()
 
     # The modeling resource.
-    reg = t1_scan.registrations[0]
-    modeling = _create_modeling(subject, session_number, reg.name)
+    for reg_cfg_key, reg_cfg in reg_cfg_dict.iteritems():
+        reg = t1_scan.registrations[reg_cfg_key]
+        mdl_result = _create_modeling_result(subject, session_number)
+        reg_cfg.modeling.results.append(mdl_result)
 
     return Session(number=session_number, acquisition_date=date,
-                   modeling=[modeling], detail=detail)
+                   detail=detail)
 
 
-def _create_modeling(subject, session_number, source):
+def _create_modeling_result(subject, session_number):
     # The modeling resource name.
-    resource = "pk_%02d" % session_number
+    resource = "pk_vH4wk%02d" % session_number
+    
     # Add modeling parameters with a random offset.
     factor = 1 + ((random.random() - 0.5) * 0.4)
     fxl_k_trans_avg = FXL_K_TRANS_AVG * factor
     fxl_k_trans_file = _resource_filename(subject, session_number, resource,
                                           FXL_K_TRANS_FILE_NAME)
     fxl_k_trans_label_map = _create_label_map(fxl_k_trans_file)
-    fxl_k_trans = ModelingParameter(average=fxl_k_trans_avg, filename=fxl_k_trans_file,
+    fxl_k_trans = ModelingParameter(average=fxl_k_trans_avg,
+                                    filename=fxl_k_trans_file,
                                     label_map=fxl_k_trans_label_map)
 
     factor = DELTA_K_TRANS_FACTOR + ((random.random() - 0.5) * 0.4)
@@ -448,14 +492,16 @@ def _create_modeling(subject, session_number, source):
     fxr_k_trans_file = _resource_filename(subject, session_number, resource,
                                           FXR_K_TRANS_FILE_NAME)
     fxr_k_trans_label_map = _create_label_map(fxr_k_trans_file)
-    fxr_k_trans = ModelingParameter(average=fxr_k_trans_avg, filename=fxr_k_trans_file,
+    fxr_k_trans = ModelingParameter(average=fxr_k_trans_avg,
+                                    filename=fxr_k_trans_file,
                                     label_map=fxr_k_trans_label_map)
 
     delta_k_trans_avg = fxl_k_trans_avg - fxr_k_trans_avg
     delta_k_trans_file = _resource_filename(subject, session_number, resource,
                                             DELTA_K_TRANS_FILE_NAME)
     delta_k_trans_label_map = _create_label_map(delta_k_trans_file)
-    delta_k_trans = ModelingParameter(average=delta_k_trans_avg, filename=delta_k_trans_file,
+    delta_k_trans = ModelingParameter(average=delta_k_trans_avg,
+                                      filename=delta_k_trans_file,
                                       label_map=delta_k_trans_label_map)
 
     offset = (0.5 - random.random()) * 0.2
@@ -472,9 +518,8 @@ def _create_modeling(subject, session_number, source):
     tau_i = ModelingParameter(average=tau_i_avg, filename=tau_i_file,
                                       label_map=tau_i_label_map)
 
-    return Modeling(name=resource, source=source,
-                    fxl_k_trans=fxl_k_trans, fxr_k_trans=fxr_k_trans,
-                    delta_k_trans=delta_k_trans, v_e=v_e, tau_i=tau_i)
+    return ModelingResult(resource=resource, fxl_k_trans=fxl_k_trans, fxr_k_trans=fxr_k_trans,
+                          delta_k_trans=delta_k_trans, v_e=v_e, tau_i=tau_i)
 
 
 SESSION_OFFSET_RANGES = dict(
@@ -495,34 +540,36 @@ def _create_all_series(collection):
     return [Series(number=number) for number in collection.series_numbers]
 
 
-def _create_t1_scan(subject, session_number, series, bolus_arrival_index):
+def _create_t1_scan(subject, session_number, series, bolus_arrival_index,
+                    reg_cfg_dict):
     files = _create_scan_filenames(subject, session_number, series, 't1')
     intensity = _create_intensity(len(series), bolus_arrival_index)
     # Add a motion artifact.
     start = 12 + _random_int(0, 5)
     for i in range(start, start + 5):
         intensity.intensities[i] -= random.random() * 8
-    # Make the T1 registration.
-    reg = _create_registration(subject, session_number, series,
-                               bolus_arrival_index)
-    
-    return Scan(name='t1', files=files, intensity=intensity,
-                registrations=[reg])
+    # Make the T1 registrations.
+    regs = {reg_cfg_key: _create_registration(subject, session_number, series,
+                                 bolus_arrival_index)
+            for reg_cfg_key in reg_cfg_dict.iterkeys()}
+
+    return Scan(scan_type='t1', files=files, intensity=intensity, registrations=regs)
 
 
 def _create_t2_scan(subject, session_number, series, bolus_arrival_index):
     files = _create_scan_filenames(subject, session_number, series, 't2')
+    intensity = _create_intensity(len(series), bolus_arrival_index)
     
-    return Scan(name='t2', files=files)
+    return Scan(scan_type='t2', files=files, intensity=intensity)
 
 
 def _create_registration(subject, session_number, series, bolus_arrival_index):
-    name = "%02d" % session_number
-    files = _create_registration_filenames(subject, session_number, name,
+    resource = "reg_p6Lcw%02d" % session_number
+    files = _create_registration_filenames(subject, session_number, resource,
                                            series)
     intensity = _create_intensity(len(series), bolus_arrival_index)
-    return Registration(name=name, files=files, intensity=intensity,
-                        parameters=REG_PARAMS)
+    
+    return Registration(resource=resource, files=files, intensity=intensity)
 
 
 def _create_scan_filenames(subject, session_number, series, scan_type):
@@ -542,14 +589,14 @@ def _create_scan_filenames(subject, session_number, series, scan_type):
             for series in series]
 
 
-def _create_registration_filenames(subject, session_number, name, series):
+def _create_registration_filenames(subject, session_number, resource, series):
     # Creates the file names for the given resource and series list. The file is
     # name is given as:
     #
     # ``data/``*project*``/``*subject*``/``*session*``/resource/``*name*``/series``*number*``.nii.gz``
     #
     # where:
-    # * *name* is the resource name
+    # * *resource* is the resource name
     # * *number* is the series number
     #
     # e.g.::
@@ -561,7 +608,7 @@ def _create_registration_filenames(subject, session_number, name, series):
     # @param name the registration name
     # @param series the series array
     # @return the file name array
-    return [_registration_filename(subject, session_number, series.number, name)
+    return [_registration_filename(subject, session_number, series.number, resource)
             for series in series]
 
 
