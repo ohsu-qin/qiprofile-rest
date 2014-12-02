@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 (http://quip1:6060/qiprofile-rest) for change details.
 
+2.3.1 / 2014-12-02
+------------------
+* Move modeling to registration configuration and scan set.
+
 2.2.2 / 2014-11-04
 ------------------
 * Add drug course.
