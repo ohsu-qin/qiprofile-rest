@@ -3,7 +3,8 @@ from nose.tools import (assert_is_none, assert_is_instance, assert_in,
 from datetime import datetime
 from mongoengine import connect
 from mongoengine.connection import get_db
-from qiprofile_rest.models import (Subject, Assessment, Biopsy, Surgery)
+from qiprofile_rest.models import (Subject, Assessment, Biopsy, Surgery,
+                                   Drug, Weight)
 from qiprofile_rest.test.helpers import seed
 
 class TestSeed(object):
@@ -40,6 +41,8 @@ class TestSeed(object):
         assert_in(subject.collection, collections,
                   "Collection is invalid: %s" % subject.collection)
         assert_is_not_none(subject.detail, "%s is missing detail" % subject)
+        assert_is_not_none(subject.detail.gender, "%s is missing gender" % subject)
+        assert_is_not_none(subject.detail.weight, "%s is missing weight" % subject)
         assert_is_not_none(subject.detail.sessions, "%s has no sessions" % subject)
         sessions = subject.detail.sessions
         session_cnt = TestSeed.SESSION_CNT[subject.collection]
@@ -47,20 +50,144 @@ class TestSeed(object):
                                   (subject, len(sessions)))
         for session in sessions:
             self._validate_session(subject, session)
+        
+        # The registration configuration has modeling.
+        assert_equal(len(subject.detail.registration_configurations), 1,
+                     "%s Subject %s registration configurations size is incorrect: %d" %
+                     (subject.collection, subject.number, len(subject.detail.registration_configurations)))
+        reg_cfg = next(subject.detail.registration_configurations.itervalues())
+        assert_is_not_none(reg_cfg.parameters,
+                           "%s Subject %s registration configuration is missing parameters" %
+                           (subject.collection, subject.number))
+        assert_equal(reg_cfg.parameters, seed.REG_PARAMS,
+                     "%s Subject %s registration parameters are incorrect: %s" %
+                     (subject.collection, subject.number, reg_cfg.parameters))
+        assert_is_not_none(reg_cfg.modeling, "%s is missing modeling" %
+                                             subject)
+        assert_is_not_none(reg_cfg.modeling.input_parameters,
+                           "%s Subject %d modeling is missing the input parameters" %
+                           (subject.collection, subject.number))
+        if subject.collection == 'Breast':
+            mdl_result_len = 4
+        elif subject.collection == 'Sarcoma':
+            mdl_result_len = 3
+        assert_equal(len(reg_cfg.modeling.results), mdl_result_len,
+                     "%s Subject %s modeling results size is incorrect: %d" %
+                     (subject.collection, subject.number, len(reg_cfg.modeling.results)))
+        mdl_result = reg_cfg.modeling.results[0]
+        fxl_k_trans = mdl_result.fxl_k_trans
+        assert_is_not_none(fxl_k_trans, ("%s Subject %d modeling is"
+                                         " missing a fxl_k_trans parameter") %
+                                         (subject.collection, subject.number))
+        assert_is_not_none(fxl_k_trans.average, ("%s Subject %d modeling"
+                                        " is missing a fxl_k_trans average") %
+                                        (subject.collection, subject.number))
+        assert_is_not_none(fxl_k_trans.filename, ("%s Subject %d modeling"
+                                        " is missing a fxl_k_trans filename") %
+                                        (subject.collection, subject.number))
+        
+        fxr_k_trans = mdl_result.fxr_k_trans
+        assert_is_not_none(fxr_k_trans, ("%s Subject %d modeling is"
+                                        " missing a fxr_k_trans parameter") %
+                                        (subject.collection, subject.number))
+        assert_is_not_none(fxr_k_trans.average, ("%s Subject %d modeling"
+                                        " is missing a fxr_k_trans average") %
+                                        (subject.collection, subject.number))
+        assert_is_not_none(fxr_k_trans.filename, ("%s Subject %d modeling"
+                                        " is missing a fxr_k_trans filename") %
+                                        (subject.collection, subject.number))
+        
+        delta_k_trans = mdl_result.delta_k_trans
+        assert_is_not_none(delta_k_trans, ("%s Subject %d modeling is"
+                                          " missing a delta_k_trans parameter") %
+                                          (subject.collection, subject.number))
+        assert_is_not_none(delta_k_trans.average,
+                           ("%s Subject %d modeling is missing a"
+                            " delta_k_trans average") %
+                            (subject.collection, subject.number))
+        assert_is_not_none(delta_k_trans.filename,
+                           ("%s Subject %d modeling is missing a"
+                           " delta_k_trans filename") %
+                           (subject.collection, subject.number))
+        label_map = delta_k_trans.label_map
+        assert_is_not_none(label_map,
+                           ("%s Subject %d modeling is missing a"
+                            " label_map") % (subject.collection, subject.number))
+        assert_is_not_none(label_map.filename,
+                           ("%s Subject %d modeling label map is"
+                            " missing a file name") % (subject.collection, subject.number))
+        assert_is_not_none(label_map.color_table,
+                           ("%s Subject %d modeling   label map is"
+                            " missing a color table") % (subject.collection, subject.number))
+        
+        v_e = mdl_result.v_e
+        assert_is_not_none(v_e, ("%s Subject %d modeling is missing"
+                                 " a v_e parameter" %
+                                 (subject.collection, subject.number)))
+        assert_is_not_none(v_e.average, ("%s Subject %d modeling"
+                                         " is missing a v_e average") %
+                                         (subject.collection, subject.number))
+        assert_is_not_none(v_e.filename, ("%s Subject %d modeling"
+                                          " is missing a v_e filename") %
+                                          (subject.collection, subject.number))
+        
+        tau_i = mdl_result.tau_i
+        assert_is_not_none(tau_i, ("%s Subject %d modeling is missing"
+                                  " a tau_i parameter") %
+                                  (subject.collection, subject.number))
+        assert_is_not_none(tau_i.average, ("%s Subject %d modeling"
+                                          " is missing a tau_i average") %
+                                          (subject.collection, subject.number))
+        assert_is_not_none(tau_i.filename, ("%s Subject %d modeling"
+                                           " is missing a tau_i filename") %
+                                           (subject.collection, subject.number))
 
         treatments = subject.detail.treatments
         assert_equal(len(treatments), 3,
-                     "%s session %d treatments count is incorrect: %d" %
-                     (subject, session.number, len(treatments)))
+                     "%s Subject %d treatments count is incorrect: %d" %
+                     (subject.collection, subject.number, len(treatments)))
+        # Breast has neoadjuvant drugs.
+        if subject.collection == 'Breast':
+            neo_tx = next(((trt for trt in treatments if trt.treatment_type == 'Neoadjuvant')),
+                          None)
+            assert_is_not_none(neo_tx, ("%s Subject %d is missing a neodjuvant" +
+                                        " treatment") % (subject.collection, subject.number))
+            dosages = neo_tx.dosages
+            assert_equal(len(dosages), 2,
+                         (("%s session %d neoadjuvant treatment dosage count is" +
+                          " incorrect: %d") % (subject.collection, subject.number, len(dosages))))
+            # Validate the agent type and dosage unit.
+            for dosage in dosages:
+                agent = dosage.agent
+                assert_is_instance(agent, Drug,
+                                   "%s Subject %d neoadjuvant agent is not a drug" %
+                                   (subject.collection, subject.number))
+                amount = dosage.amount
+                assert_is_not_none(amount, ("%s Subject %d is missing a neodjuvant drug" +
+                                          " dosage amount") % (subject.collection, subject.number))
+                unit = amount.unit
+                assert_is_not_none(unit, ("%s Subject %d is missing a neodjuvant drug" +
+                                          " dosage unit") % (subject.collection, subject.number))
+                assert_is_instance(unit, Weight, ("%s Subject %d neodjuvant drug dosage" +
+                                                      " unit is incorrect") %
+                                                      (subject.collection, subject.number))
+                per_unit = amount.per_unit
+                assert_is_not_none(per_unit, ("%s Subject %d is missing a neodjuvant drug" +
+                                              " dosage per unit") % (subject.collection, subject.number))
+                assert_is_instance(per_unit, Weight, ("%s Subject %d neodjuvant drug" +
+                                                          " dosage per unit is incorrect") %
+                                                          (subject.collection, subject.number))
+                assert_equal(per_unit.scale, 'k', ("%s Subject %d neodjuvant drug per unit scale" +
+                                             " is not kilogram") % ((subject.collection, subject.number)))
 
         encounters = subject.detail.encounters
         assert_equal(len(encounters), 3,
-                     "%s session %d encounter count is incorrect: %d" %
-                     (subject, session.number, len(encounters)))
+                     "%s Subject %d encounter count is incorrect: %d" %
+                     (subject.collection, subject.number, len(encounters)))
         biopsy = next(((enc for enc in encounters if isinstance(enc, Biopsy))),
                       None)
-        assert_is_not_none(biopsy, "%s session %d is missing a biopsy" %
-                                   (subject, session.number))
+        assert_is_not_none(biopsy, "%s Subject %d is missing a biopsy" %
+                                   (subject.collection, subject.number))
         path = biopsy.pathology
         assert_is_not_none(path, "%s biopsy is missing a pathology report" %
                                  subject)
@@ -70,14 +197,14 @@ class TestSeed(object):
                                      " tumor type" % subject)
         surgery = next(((enc for enc in encounters if isinstance(enc, Surgery))),
                       None)
-        assert_is_not_none(surgery, "%s session %d is missing a surgery" %
-                                     (subject, session.number))
+        assert_is_not_none(surgery, "%s Subject %d is missing a surgery" %
+                                     (subject.collection, subject.number))
         assert_is_none(surgery.pathology,
                      "%s surgery incorrectly has an evaluation" % subject)
         post_trt = next(((enc for enc in encounters if isinstance(enc, Assessment))),
                       None)
-        assert_is_not_none(post_trt, "%s session %d is missing an assessment" %
-                                     (subject, session.number))
+        assert_is_not_none(post_trt, "%s Subject %d is missing an assessment" %
+                                     (subject.collection, subject.number))
         assert_is_not_none(post_trt.evaluation,
                      "%s post-treatment assessment is missing an evaluation" % subject)
 
@@ -88,8 +215,6 @@ class TestSeed(object):
         assert_is_instance(session.acquisition_date, datetime,
                            "%s session %d acquisition date type is incorrect: %s" %
                            (subject, session.number, session.acquisition_date.__class__))
-        assert_is_not_none(session.modeling, "%s session %d is missing modeling" %
-                                             (subject, session.number))
         assert_is_not_none(session.detail, "%s session %d is missing detail" %
                                            (subject, session.number))
         
@@ -107,97 +232,10 @@ class TestSeed(object):
                                            " intensity" % (subject, session.number))
         
         # Validate the registration.
-        regs = t1_scan.registrations
-        assert_equal(len(regs), 1, "%s session %d registrations count is incorrect:"
-                                   " %d" %(subject, session.number, len(regs)))
-        reg = regs[0]
-        
-        # The scan has a modeling result.
-        assert_equal(len(session.modeling), 1,
-                     "%s session %d modeling size is incorrect: %d" %
-                     (subject, session.number, len(session.modeling)))
-        mdl = session.modeling[0]
-        assert_equal(mdl.source, reg.name,
-                     "%s session %d modeling %s source is incorrect: %s" %
-                     (subject, session.number, mdl.name, mdl.source))
-        
-        fxl_k_trans = mdl.fxl_k_trans
-        assert_is_not_none(fxl_k_trans, "%s session %d scan modeling %s is"
-                                        " missing a fxl_k_trans parameter" %
-                                        (subject, session.number, mdl.name))
-        assert_is_not_none(fxl_k_trans.average, "%s session %d scan modeling %s"
-                                        " is missing a fxl_k_trans average" %
-                                        (subject, session.number, mdl.name))
-        assert_is_not_none(fxl_k_trans.filename, "%s session %d scan modeling %s"
-                                        " is missing a fxl_k_trans filename" %
-                                        (subject, session.number, mdl.name))
-        
-        fxr_k_trans = mdl.fxr_k_trans
-        assert_is_not_none(fxr_k_trans, "%s session %d scan modeling %s is"
-                                        " missing a fxr_k_trans parameter" %
-                                        (subject, session.number, mdl.name))
-        assert_is_not_none(fxr_k_trans.average, "%s session %d scan modeling %s"
-                                        " is missing a fxr_k_trans average" %
-                                        (subject, session.number, mdl.name))
-        assert_is_not_none(fxr_k_trans.filename, "%s session %d scan modeling %s"
-                                        " is missing a fxr_k_trans filename" %
-                                        (subject, session.number, mdl.name))
-        
-        delta_k_trans = mdl.delta_k_trans
-        assert_is_not_none(delta_k_trans, "%s session %d scan modeling %s is"
-                                          " missing a delta_k_trans parameter" %
-                                          (subject, session.number, mdl.name))
-        assert_is_not_none(delta_k_trans.average,
-                           "%s session %d scan modeling %s is missing a"
-                           " delta_k_trans average" %
-                            (subject, session.number, mdl.name))
-        assert_is_not_none(delta_k_trans.filename,
-                           "%s session %d scan modeling %s is missing a"
-                           " delta_k_trans filename" %
-                           (subject, session.number, mdl.name))
-        label_map = delta_k_trans.label_map
-        assert_is_not_none(label_map,
-                           "%s session %d scan modeling %s is missing a"
-                           " label_map" % (subject, session.number, mdl.name))
-        assert_is_not_none(label_map.filename,
-                           "%s session %d scan modeling %s label map is"
-                           " missing a file name" % (subject, session.number, mdl.name))
-        assert_is_not_none(label_map.color_table,
-                           "%s session %d scan modeling %s label map is"
-                           " missing a color table" % (subject, session.number, mdl.name))
-        
-        v_e = mdl.v_e
-        assert_is_not_none(v_e, "%s session %d scan modeling %s is missing"
-                                " a v_e parameter" %
-                                (subject, session.number, mdl.name))
-        assert_is_not_none(v_e.average, "%s session %d scan modeling %s"
-                                        " is missing a v_e average" %
-                                        (subject, session.number, mdl.name))
-        assert_is_not_none(v_e.filename, "%s session %d scan modeling %s"
-                                        " is missing a v_e filename" %
-                                        (subject, session.number, mdl.name))
-        
-        tau_i = mdl.tau_i
-        assert_is_not_none(tau_i, "%s session %d scan modeling %s is missing"
-                                  " a tau_i parameter" %
-                                  (subject, session.number, mdl.name))
-        assert_is_not_none(tau_i.average, "%s session %d scan modeling %s"
-                                          " is missing a tau_i average" %
-                                          (subject, session.number, mdl.name))
-        assert_is_not_none(tau_i.filename, "%s session %d scan modeling %s"
-                                           " is missing a tau_i filename" %
-                                           (subject, session.number, mdl.name))
-
         assert_true(not not t1_scan.registrations,
                "%s session %d registration is missing a registration" %
                (subject, session.number))
-        reg = t1_scan.registrations[0]
-        assert_equal(reg.name, "%02d" % session.number,
-                     "%s session %d registration name incorrect: %s" %
-                     (subject, session.number, reg.name))
-        assert_equal(reg.parameters, seed.REG_PARAMS,
-                     "%s session %s %s parameters incorrect: %s" %
-                     (subject, session.number, reg.name, reg.parameters))
+        reg = next(t1_scan.registrations.itervalues())
 
         reg_intensity = reg.intensity
         assert_is_not_none(reg.intensity,

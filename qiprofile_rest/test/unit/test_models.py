@@ -75,13 +75,13 @@ class TestModel(object):
     def test_session(self):
         detail = SubjectDetail(collection='Breast', number=1)
         date = datetime(2013, 1, 4, tzinfo=pytz.utc)
-        modeling = Modeling(name='pk_test', image_container_name='scan')
+        modeling = ModelingResult(name='pk_test', image_container_name='scan')
         session = Session(number=1, acquisition_date=date, modeling=[modeling])
         detail.sessions = [session]
         detail.save()
         
-        # Modeling must have an image container name.
-        bad_modeling = Modeling(name='pk_test')
+        # ModelingResult must have an image container name.
+        bad_modeling = ModelingResult(name='pk_test')
         session.modeling.append(bad_modeling)
         with assert_raises(ValidationError):
             detail.save()

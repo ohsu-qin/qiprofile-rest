@@ -1,8 +1,21 @@
 """
 The qiprofile Mongodb data model.
+
+The model field choices are listed in the preferred display order,
+most common to least common.
+
+The data capture client has the following responsibility:
+
+*  Validate the data upon input as determined by the model
+   validation below.
+   
+* Resolve conflicts between data capture and the model, e.g. the
+   default value or validation. 
 """
 
 import re
+import decimal
+from numbers import Number
 import mongoengine
 from mongoengine import (fields, signals, ValidationError)
 from . import choices
@@ -50,45 +63,12 @@ class Subject(mongoengine.Document):
 signals.pre_delete.connect(Subject.pre_delete, sender=Subject)
 
 
-class SubjectDetail(mongoengine.Document):
-    """
-    The patient detail aggregate. The Mongodb quiprofile_subject_detail
-    document embeds the subject sessions and outcomes.
-    """
-
-    meta = dict(collection='qiprofile_subject_detail')
-
-    birth_date = fields.DateTimeField()
-
-    races = fields.ListField(
-        fields.StringField(max_length=choices.max_length(choices.RACE_CHOICES),
-                           choices=choices.RACE_CHOICES))
-
-    ethnicity = fields.StringField(
-        max_length=choices.max_length(choices.ETHNICITY_CHOICES),
-        choices=choices.ETHNICITY_CHOICES)
-
-    sessions = fields.ListField(field=fields.EmbeddedDocumentField('Session'))
-
-    treatments = fields.ListField(field=fields.EmbeddedDocumentField('Treatment'))
-
-    encounters = fields.ListField(field=fields.EmbeddedDocumentField('Encounter'))
-
-    def pre_delete(cls, sender, document, **kwargs):
-        """Cascade delete this SubjectDetail's sessions."""
-
-        for sess in self.sessions:
-            sess.delete()
-
-
 class Session(mongoengine.EmbeddedDocument):
     """The MR session (a.k.a. *study* in DICOM terminology)."""
 
     number = fields.IntField(required=True)
 
     acquisition_date = fields.DateTimeField()
-
-    modeling = fields.ListField(field=mongoengine.EmbeddedDocumentField('Modeling'))
 
     detail = fields.ReferenceField('SessionDetail')
 
@@ -108,48 +88,6 @@ class Series(mongoengine.EmbeddedDocument):
     number = fields.IntField(required=True)
 
 
-class Modeling(mongoengine.EmbeddedDocument):
-    """The QIN pharmicokinetic modeling result."""
-
-    name = fields.StringField(required=True)
-    """The modeling resource name, e.g. ``pk_R3y9``."""
-
-    source = fields.StringField(required=True)
-    """
-    The source image container id.
-    This is not a ReferenceField to an ImageContainer,
-    since ImageContainer is embedded in the SessionDetail.
-    """
-
-    fxl_k_trans = fields.EmbeddedDocumentField('ModelingParameter')
-
-    fxr_k_trans = fields.EmbeddedDocumentField('ModelingParameter')
-
-    delta_k_trans = fields.EmbeddedDocumentField('ModelingParameter')
-
-    v_e = fields.EmbeddedDocumentField('ModelingParameter')
-
-    tau_i = fields.EmbeddedDocumentField('ModelingParameter')
-
-    parameters = fields.DictField()
-    """The modeling execution input parameters."""
-
-    def __str__(self):
-        return "Modeling %s" % self.name
-
-
-class ModelingParameter(mongoengine.EmbeddedDocument):
-    """The discrete modeling result."""
-
-    filename = fields.StringField(required=True)
-    """The voxel-wise mapping file path relative to the web app root."""
-
-    average = fields.FloatField(required=True)
-    """The average parameter value over all voxels."""
-    
-    label_map = fields.EmbeddedDocumentField('LabelMap')
-
-
 class LabelMap(mongoengine.EmbeddedDocument):
     """A label map with an optional associated color lookup table."""
 
@@ -167,9 +105,6 @@ class ImageContainer(mongoengine.EmbeddedDocument):
 
     meta = dict(allow_inheritance=True)
 
-    name = fields.StringField(required=True)
-    """The container name, e.g. scan ``t1`` or registration ``k3RtZ``."""
-
     files = fields.ListField(field=fields.StringField())
     """The image file pathnames relative to the web app root."""
 
@@ -181,15 +116,168 @@ class ImageContainer(mongoengine.EmbeddedDocument):
 class Scan(ImageContainer):
     """The patient image scan."""
     
-    registrations = fields.ListField(field=mongoengine.EmbeddedDocumentField('Registration'))
-    """The registration {name: object} dictionary."""
+    SCAN_TYPES = ['t1', 't2']
+    
+    scan_type = fields.StringField(
+        choices=SCAN_TYPES,
+        max_length=choices.max_length(SCAN_TYPES),
+        required=True
+    )
+    
+    registrations = fields.DictField(
+        field=mongoengine.EmbeddedDocumentField('Registration')
+    )
+    """
+    The {key: registration} dictionary, where *key* is the
+    subject registration configuration dictionary key.
+    """
+
+
+class Modeling(mongoengine.EmbeddedDocument):
+    """
+    The QIN pharmicokinetic modeling run over a consistent list of image
+    containers.
+    """
+    
+    input_parameters = fields.DictField()
+    """The modeling execution input parameters."""
+
+    results = fields.ListField(
+        fields.EmbeddedDocumentField('ModelingResult')
+    )
+    """
+    The modeling results in session number order.
+    """
+
+
+class ModelingResult(mongoengine.EmbeddedDocument):
+    """The QIN pharmicokinetic modeling result."""
+
+    resource = fields.StringField(required=True)
+    """The modeling XNAT resource name, e.g. ``pk_R3y9``."""
+
+    fxl_k_trans = fields.EmbeddedDocumentField('ModelingParameter')
+
+    fxr_k_trans = fields.EmbeddedDocumentField('ModelingParameter')
+
+    delta_k_trans = fields.EmbeddedDocumentField('ModelingParameter')
+
+    v_e = fields.EmbeddedDocumentField('ModelingParameter')
+
+    tau_i = fields.EmbeddedDocumentField('ModelingParameter')
+
+    def __str__(self):
+        return "Modeling %s" % self.name
+
+
+class ModelingParameter(mongoengine.EmbeddedDocument):
+    """The discrete modeling result."""
+
+    filename = fields.StringField(required=True)
+    """The voxel-wise mapping file path relative to the web app root."""
+
+    average = fields.FloatField(required=True)
+    """The average parameter value over all voxels."""
+    
+    label_map = fields.EmbeddedDocumentField('LabelMap')
+
+
+class Modelable(mongoengine.EmbeddedDocument):
+    
+    meta = dict(allow_inheritance=True)
+        
+    modeling = fields.EmbeddedDocumentField('Modeling')
+    """
+    PK modeling performed on subject scans grouped by type or registrations
+    grouped by registration configuration.
+    """
+
+
+class ScanSet(Modelable):
+    """
+    A consistent set of scans for a given scan type. This is the concrete
+    subclass of the abstract Modelable class for scans. ScanSet is a marker
+    class without fields.
+    
+    Note: The subject holds a {scan type: scan set} dictionary. Therefore, it
+    is unnecessary to redundantly have a scan type field in this ScanSet class.
+    """
+    pass
 
 
 class Registration(ImageContainer):
-    """The patient image registration that results from processing
-    the image scan."""
+    """
+    The patient image registration that results from processing
+    the image scan.
+    """
+    
+    class Configuration(Modelable):
+        """
+        The registration technique and input parameters.
+        Since the configuration binds registrations across sessions,
+        the Configuration objects are embedded in the SubjectDetail.
+        """
+        
+        ALGORITHMS = ['ANTS', 'FNIRT']
 
-    parameters = fields.DictField()
+        algorithm = fields.StringField(
+            choices=ALGORITHMS,
+            max_length=choices.max_length(ALGORITHMS),
+            required=True
+        )
+        """The registration algorithm."""
+        
+        parameters = fields.DictField()
+        """The registration input parameters."""
+
+
+    resource = fields.StringField(required=True)
+    """The registration XNAT resource name, e.g. ``reg_k3RtZ``."""
+
+
+class SubjectDetail(mongoengine.Document):
+    """
+    The patient detail aggregate. The Mongodb quiprofile_subject_detail
+    document embeds the subject sessions and outcomes.
+    """
+
+    meta = dict(collection='qiprofile_subject_detail')
+    
+    # The {scan type: ScanSet} dictionary
+    scan_sets = fields.DictField(field=fields.EmbeddedDocumentField(ScanSet))
+    
+    # The {configuration name: configuration} dictionary.
+    registration_configurations = fields.DictField(
+        field=fields.EmbeddedDocumentField(Registration.Configuration)
+    )
+
+    birth_date = fields.DateTimeField()
+
+    races = fields.ListField(
+        fields.StringField(max_length=choices.max_length(choices.RACE_CHOICES),
+                           choices=choices.RACE_CHOICES))
+
+    ethnicity = fields.StringField(
+        max_length=choices.max_length(choices.ETHNICITY_CHOICES),
+        choices=choices.ETHNICITY_CHOICES)
+
+    gender = fields.StringField(
+        max_length=choices.max_length(choices.GENDER_CHOICES),
+        choices=choices.GENDER_CHOICES)
+
+    weight = fields.IntField()
+
+    sessions = fields.ListField(field=fields.EmbeddedDocumentField('Session'))
+
+    treatments = fields.ListField(field=fields.EmbeddedDocumentField('Treatment'))
+
+    encounters = fields.ListField(field=fields.EmbeddedDocumentField('Encounter'))
+
+    def pre_delete(cls, sender, document, **kwargs):
+        """Cascade delete this SubjectDetail's sessions."""
+
+        for sess in self.sessions:
+            sess.delete()
 
 
 class Intensity(mongoengine.EmbeddedDocument):
@@ -246,100 +334,274 @@ class Treatment(mongoengine.EmbeddedDocument):
 
     end_date = fields.DateTimeField(required=True)
     
-    drug_courses = fields.ListField(
-        field=mongoengine.EmbeddedDocumentField('DrugCourse')
+    dosages = fields.ListField(
+        field=mongoengine.EmbeddedDocumentField('Dosage')
     )
 
 
-class DrugCourse(mongoengine.EmbeddedDocument):
+class Dosage(mongoengine.EmbeddedDocument):
+    """The agent dosage."""
+
+    agent = fields.EmbeddedDocumentField('Agent', required=True)
+
+    amount = fields.EmbeddedDocumentField('Measurement', required=True)
+
+    start = fields.DateTimeField()
     
-    drug_name = fields.StringField(required=True)
+    times_per_day = fields.IntField()
     
-    administration = fields.ListField(
-        field=mongoengine.EmbeddedDocumentField('DrugAdministration')
-    )
+    days = fields.IntField()
 
 
-class DrugAdministration(mongoengine.EmbeddedDocument):
+class Agent(mongoengine.EmbeddedDocument):
+    """A treatment agent, e.g. drug or radiation."""
+
+    meta = dict(allow_inheritance=True)
+
+
+class Drug(Agent):
     
-    date = fields.DateTimeField()
+    name = fields.StringField(required=True)
+    """The official listed drug name."""
+
+
+class Radiation(Agent):
+
+    FORMS = ['photon', 'proton', 'electron', 'neutron', 'carbon ion', 'radiopharmaceutical']
+    """
+    The advisory radiation forms list. The client should constraion the radiation
+    form choices to this list where possible, but allow for free-form text where
+    necessary.
+    """
     
-    dosage = fields.EmbeddedDocumentField('Measurement')
+    form = fields.StringField()
+
+
+class OtherAgent(Agent):
+    
+    name = fields.StringField(required=True)
 
 
 class Measurement(mongoengine.EmbeddedDocument):
+    """
+    A scientific measurement.
     
-    value = fields.EmbeddedDocumentField('Value', required=True)
+    The measurement is a quantitative amount associated with a unit.
+    The unit is the Unit as captured and displayed. The amount is
+    expressed as a python Decimal in unscaled units. If the constructor
+    is called with a non-Decimal numeric amount, then the value is
+    converted to a Decimal, e.g.::
+          
+        Measurement(amount=0.006, unit=Weight())
     
-    unit = fields.EmbeddedDocumentField('Unit', required=True)
+    is equivalent to::
+
+        from decimal import Decimal
+        Measurement(amount=Decimal(0.006), unit=Weight())
     
-    # A unit factor, e.g. unit=WeightUnit(), per_unit = WeightUnit(scale='k'),
-    # and value = 12 implies the dosage is 2mg/kg, where the kg is the
-    # patient weight.
+    :Note: the client is responsible for saving the measurement amount
+    in unscaled units and converting the database amount to the preferred
+    unit. For example, 40mg is saved as follows::
+          
+        Measurement(amount=0.04, unit=Volume())
+    
+    which is equivalent to::
+
+        Measurement(amount=0.04, unit=Volume(scale='m'))
+    
+    When this measurement is read from the database, the client then
+    converts the measurement to the preferred display value ``40mg``.
+    
+    The measurement unit can be qualified by a second ``per_unit``
+    dimension, e.g. 2 mg/kg dosage per patient weight is expressed
+    as::
+
+        Measurement(amount=0.002, unit=Weight(), per_unit=Weight(scale='k'))
+    
+    :Note: the amount is a :class:`Decimal` embedded object rather than
+    the broken MongoEngine ``DecimalField`` (see the :class:`Decimal`
+    comment).
+    """
+    
+    def __init__(self, *args, **kwargs):
+        # Convert the amount to a Decimal, if necessary.
+        # The amount can be the first positional argument
+        # or a keyword argument.
+        if args:
+            args = list(args)
+            args[0] = self._as_decimal(args[0])
+        elif 'amount' in kwargs:
+            kwargs['amount'] = self._as_decimal(kwargs['amount'])
+        super(Measurement, self).__init__(*args, **kwargs)
+
+    def _as_decimal(self, value):
+        if isinstance(value, Number):
+            return Decimal(value)
+        else:
+            return value
+    
+    amount = fields.EmbeddedDocumentField('Decimal', required=True)
+    
+    unit = fields.EmbeddedDocumentField('Unit')
+    
     per_unit = fields.EmbeddedDocumentField('Unit')
 
 
+class Decimal(mongoengine.EmbeddedDocument):
+    """
+    This Decimal document class is a work-around for the broken
+    MongoEngine DecimalField
+    (cf. https://github.com/MongoEngine/mongoengine/issues?q=is%3Aissue+is%3Aopen+decimal).
+    
+    Decimal has a float value and an optional precision. The default
+    precision is determined as follows:
+    
+    * If the Decimal value is initialized with a python ``decimal.Decimal``
+      or string, then the default precision is the number of decimal places
+      expressed in that value, e.g.::
+    
+          Decimal('1.24').precision #=> 2
+          Decimal(decimal.Decimal('1.4')).precision #=> 1
+    
+    * If the Decimal value is initialized with an integer, then the default
+            precision is zero, e.g.::
+
+                Decimal(1).precision #=> 0
+    """
+    # TODO - migrate to DecimalField when it is fixed in MongoEngine.
+    
+    def __init__(self, *args, **kwargs):
+        # The positional arguments will be replaced by keyword arguments.
+        if args:
+            value = args[0]
+            if len(args) > 1:
+                precision = args[1]
+            else:
+                precision = None
+        else:
+            value = kwargs.get('value')
+            precision = kwargs.get('precision')
+        
+        # Convert the value to a float, if necessary.
+        if value != None:
+            value = float(value)
+        # Set the value keyword argument.
+        kwargs['value'] = value
+        
+        # If the precision is not specified, then determine a default if
+        # possible.
+        if precision == None:
+            if isinstance(value, decimal.Decimal):
+                value_s = str(value)
+                if '.' in value_s:
+                    _, precision_s = value_s.split('.')
+                    precision = int(precision_s)
+            elif isinstance(value, int):
+                precision = 0
+
+        # Set the precision keyword argument.
+        kwargs['precision'] = precision
+        
+        super(Decimal, self).__init__(**kwargs)
+
+    def canonical(self):
+        """
+        :return: the python decimal.Decimal equivalent of this Decimal
+        """
+        return decimal.Decimal(str(value))
+
+    def __repr__(self):
+        """
+        :return: the value as a string with decimal places truncated
+            by the precision
+        """
+        if self.precision == None:
+            return str(self.value)
+        elif self.precision == 0:
+            return str(int(self.value))
+        else:
+            pat = '%.' + ("%s" % self.precision) + 'f'
+            return pat % self.value
+            
+    value = fields.FloatField(required=True)
+    
+    precision = fields.IntField()
+    
+
 class Unit(mongoengine.EmbeddedDocument):
+    """
+    Unit is an abstract class for the supported measurement units.
+    Each unit has a scaling factor with the default scaling factor
+    defined in the concrete Unit subclass. Each Unit subclass has
+    the following class variables:
+    
+    * ``BASE`` - the standard unscaled metric unit abbreviation,
+      e.g. ``m`` for the meter Extent unit.
+    
+    * ``SCALES`` - the recommended scaling factors, e.g. ``m`` for
+       milli and ``c`` for centi.
+    
+    The scales are a list in preference order, e.g. the ``Extent.SCALES``
+    value ``['c', 'm']`` implies that the preferred extent unit display
+    is ``cm`` (centimeter) and an edit form should show the scales ``c``
+    and ``m``, in that order, defaulting to ``c``. A scale of None
+    signifies the scaling factor 1, e.g. the  the ``Radiation.SCALES``
+    value ``[None, 'c']`` implies that the preferred radiation unit
+    display is ``Gy`` (Gray) and an edit form should show the scales
+    blank and ``c``, in that order, defaulting to blank (scaling factor
+    1).
+    
+    These class variables are advisory. The client is responsible for
+    displaying the base and scales and converting from a scaled value
+    to an unscaled value before saving the measurement to the database.
+    """
 
     meta = dict(allow_inheritance=True)
 
 
-class ExtentUnit(Unit):
+class Extent(Unit):
 
     SCALES = ['c', 'm']
 
-    # The meter designator.
-    base = fields.StringField(default='m')
+    BASE = 'm'
+    """The meter designator."""
     
-    # The scale defaults to millimeter.
-    scale = fields.StringField(choices=SCALES, default='m')
+    scale = fields.StringField(default='c')
+    """The default extent is centimeter."""
 
 
-class WeightUnit(Unit):
+class Weight(Unit):
 
-    SCALES = ['c', 'm', 'k']
+    SCALES = ['m', 'k']
 
-    # The gram designator.
-    base = fields.StringField(default='g')
+    BASE = 'g'
+    """The gram designator."""
     
-    # The scale defaults to milligram.
-    scale = fields.StringField(choices=SCALES, default='m')
+    scale = fields.StringField(default='m')
+    """The default weight is milligram."""
 
 
-class VolumeUnit(Unit):
+class Volume(Unit):
 
     SCALES = ['m']
 
-    # The liter designator.
-    base = fields.StringField(default='l')
+    BASE = 'l'
+    """The liter designator."""
     
-    # The scale defaults to milliliter.
-    scale = fields.StringField(choices=SCALES, default='m')
+    scale = fields.StringField(default='m')
+    """The default volume is milliliter."""
 
 
-class Value(mongoengine.EmbeddedDocument):
+class Radiation(Unit):
 
-    meta = dict(allow_inheritance=True)
+    SCALES = [None, 'c']
+    """The preferred radiation scale factor is 1."""
 
-
-class StringValue(Value):
-
-    value = fields.StringField(required=True)
-
-
-class NumericValue(Value):
-
-    meta = dict(allow_inheritance=True)
-
-
-class IntValue(NumericValue):
+    BASE = 'Gy'
+    """The Gray designator."""
     
-    value = fields.IntField(required=True)
-
-
-class FloatValue(NumericValue):
-    
-    value = fields.FloatField(required=True)
+    scale = fields.StringField()
+    """The default radiation is an unscaled Gray."""
 
 
 class Encounter(mongoengine.EmbeddedDocument):
@@ -348,12 +610,6 @@ class Encounter(mongoengine.EmbeddedDocument):
     meta = dict(allow_inheritance=True)
 
     date = fields.DateTimeField(required=True)
-
-
-class Assessment(Encounter):
-    """Generic collection of outcomes."""
-
-    evaluation = fields.EmbeddedDocumentField('GenericEvaluation')
 
 
 class Biopsy(Encounter):
@@ -370,14 +626,25 @@ class Surgery(Encounter):
     pathology = fields.EmbeddedDocumentField('Pathology')
 
 
+class Assessment(Encounter):
+    """Generic collection of outcomes."""
+
+    evaluation = fields.EmbeddedDocumentField('GenericEvaluation',
+                                              required=True)
+
+
 class BreastSurgery(Surgery):
     """Breast tumor extraction."""
 
     TYPE_CHOICES = ('Mastectomy', 'Lumpectomy')
+    """
+    The advisory surgery types list. The client should include these surgery type
+    choices, but allow for free-form text where necessary.
+    """
 
-    surgery_type = fields.StringField(
-        max_length=choices.max_length(TYPE_CHOICES),
-        choices=TYPE_CHOICES)
+    surgery_type = fields.StringField()
+    
+    partial = fields.BooleanField(default=False)
 
 
 class Evaluation(mongoengine.EmbeddedDocument):
@@ -428,14 +695,17 @@ class SarcomaPathology(Pathology):
                          'Clear Cell', 'Dermatofibrosarcoma', 'Fibrosarcoma',
                          'Leiomyosarcoma', 'Liposarcoma', 'MFH', 'MPNST',
                          'Osteosarcoma', 'Rhabdomyosarcoma', 'Synovial', 'Other')
+    """
+    The advisory histololgy list. The client should constraion the histology
+    choices to this list where possible, but allow for free-form text where
+    necessary.
+    """
 
-    site = fields.StringField()
+    location = fields.StringField()
 
     necrosis_pct = fields.EmbeddedDocumentField('NecrosisPercent')
 
-    histology = fields.StringField(
-        max_length=choices.max_length(HISTOLOGY_CHOICES),
-        choices=HISTOLOGY_CHOICES)
+    histology = fields.StringField()
 
 
 ## Clinical metrics ##
@@ -547,8 +817,13 @@ class TNM(Outcome):
 
         class InSitu(mongoengine.EmbeddedDocument):
             INVASIVE_TYPE_CHOICES = ('ductal', 'lobular')
+            """
+            The advisory invasive types list. The client should constraion the invasive
+            type choices to this list where possible, but allow for free-form text where
+            necessary.
+            """
             
-            invasive_type = fields.StringField(choices=INVASIVE_TYPE_CHOICES)
+            invasive_type = fields.StringField()
 
         in_situ = fields.EmbeddedDocumentField(InSitu)
 

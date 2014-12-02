@@ -12,6 +12,7 @@ ETHNICITY_CHOICES = [('Hispanic' , 'Hispanic or Latino'),
                      ('Non-Hispanic' , 'Not Hispanic or Latino')]
 """The standard FDA ethnicity categories."""
 
+GENDER_CHOICES = [('Male', 'Male'), ('Female', 'Female')]
 
 def max_length(choices):
     """
