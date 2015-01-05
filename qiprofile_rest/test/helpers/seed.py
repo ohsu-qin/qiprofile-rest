@@ -61,11 +61,11 @@ class Breast(Collection):
                                          quick_score=quick_score,
                                          intensity=intensity)
 
-        # The progestrogen status.
+        # The progesterone status.
         positive = _random_boolean()
         quick_score = _random_int(0, 8)
         intensity = _random_int(0, 100)
-        progestrogen = HormoneReceptorStatus(hormone='progestrogen',
+        progesterone = HormoneReceptorStatus(hormone='progesterone',
                                              positive=positive,
                                              quick_score=quick_score,
                                              intensity=intensity)
@@ -80,7 +80,7 @@ class Breast(Collection):
         ki_67 = _random_int(0, 100)
 
         return BreastPathology(tnm=tnm, estrogen=estrogen,
-                               progestrogen=progestrogen,
+                               progesterone=progesterone,
                                her2_neu_ihc=her2_neu_ihc,
                                her2_neu_fish=her2_neu_fish,
                                ki_67=ki_67)
@@ -291,14 +291,14 @@ def _create_subject_detail(collection, subject):
     # The modeling input parameters.
     mdl_params = dict(r1_0_val=0.7, baseline_end_idx=1)
     # The modeling object.
-    modeling = Modeling(input_parameters=mdl_params,
+    modeling = Modeling(technique='Bolero', input_parameters=mdl_params,
                         results=[])
     
     # The registration configuration.
     reg_cfg = Registration.Configuration(
-        algorithm = 'ANTS',
+        technique = 'ANTS',
         parameters=REG_PARAMS,
-        modeling=modeling
+        modeling=[modeling]
     )
     reg_cfg_dict = {reg_cfg_key: reg_cfg}
     
@@ -467,7 +467,7 @@ def _create_session(collection, subject, session_number,
     for reg_cfg_key, reg_cfg in reg_cfg_dict.iteritems():
         reg = t1_scan.registrations[reg_cfg_key]
         mdl_result = _create_modeling_result(subject, session_number)
-        reg_cfg.modeling.results.append(mdl_result)
+        reg_cfg.modeling[0].results.append(mdl_result)
 
     return Session(number=session_number, acquisition_date=date,
                    detail=detail)

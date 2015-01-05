@@ -139,6 +139,8 @@ class Modeling(mongoengine.EmbeddedDocument):
     containers.
     """
     
+    technique = fields.StringField()
+
     input_parameters = fields.DictField()
     """The modeling execution input parameters."""
 
@@ -186,7 +188,7 @@ class Modelable(mongoengine.EmbeddedDocument):
     
     meta = dict(allow_inheritance=True)
         
-    modeling = fields.EmbeddedDocumentField('Modeling')
+    modeling = fields.ListField(fields.EmbeddedDocumentField('Modeling'))
     """
     PK modeling performed on subject scans grouped by type or registrations
     grouped by registration configuration.
@@ -218,14 +220,14 @@ class Registration(ImageContainer):
         the Configuration objects are embedded in the SubjectDetail.
         """
         
-        ALGORITHMS = ['ANTS', 'FNIRT']
+        TECHNIQUE = ['ANTS', 'FNIRT']
 
-        algorithm = fields.StringField(
-            choices=ALGORITHMS,
-            max_length=choices.max_length(ALGORITHMS),
+        technique = fields.StringField(
+            choices=TECHNIQUE,
+            max_length=choices.max_length(TECHNIQUE),
             required=True
         )
-        """The registration algorithm."""
+        """The registration technique."""
         
         parameters = fields.DictField()
         """The registration input parameters."""
@@ -679,7 +681,7 @@ class BreastPathology(Pathology):
 
     estrogen = fields.EmbeddedDocumentField('HormoneReceptorStatus')
 
-    progestrogen = fields.EmbeddedDocumentField('HormoneReceptorStatus')
+    progesterone = fields.EmbeddedDocumentField('HormoneReceptorStatus')
 
     her2_neu_ihc = fields.IntField(choices=HER2_NEU_IHC_CHOICES)
 
