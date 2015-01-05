@@ -14,7 +14,7 @@ from qiprofile_rest.models import (Subject, SubjectDetail, Session, SessionDetai
                                    Intensity, Probe, Treatment, Drug, Dosage,
                                    Measurement, Weight,Biopsy, Surgery, Assessment,
                                    GenericEvaluation, BreastPathology, SarcomaPathology,
-                                   TNM, NottinghamGrade, FNCLCCGrade, NecrosisPercentValue,
+                                   TNM, ModifiedBloomRichardsonGrade, FNCLCCGrade, NecrosisPercentValue,
                                    NecrosisPercentRange, HormoneReceptorStatus)
 
 PROJECT = 'QIN_Test'
@@ -38,13 +38,13 @@ class Breast(Collection):
 
     def create_grade(self):
         """
-        @return the Nottingham grade
+        @return the ModifiedBloomRichardson grade
         """
         tubular_formation = _random_int(1, 3)
         nuclear_pleomorphism = _random_int(1, 3)
         mitotic_count = _random_int(1, 3)
 
-        return NottinghamGrade(tubular_formation=tubular_formation,
+        return ModifiedBloomRichardsonGrade(tubular_formation=tubular_formation,
                                      nuclear_pleomorphism=nuclear_pleomorphism,
                                      mitotic_count=mitotic_count)
 

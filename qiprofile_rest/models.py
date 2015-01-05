@@ -920,8 +920,8 @@ class Grade(Outcome):
     composite = fields.IntField(choices=range(1, 4))
 
 
-class NottinghamGrade(Grade):
-    """The Nottingham breast tumor grade."""
+class ModifiedBloomRichardsonGrade(Grade):
+    """The ModifiedBloomRichardson breast tumor grade."""
 
     COMPONENT_CHOICES = range(1, 4)
 
