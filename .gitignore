@@ -1,12 +1,15 @@
 **~
 _*/
-**/build
+**/build/
+dist/
+wheelhouse/
 /test/results/
 **.egg-info/
 .DS_Store
 .idea
 .loadpath
 .project
+.pypirc
 .*/
 *.pdf
 *.pyc
