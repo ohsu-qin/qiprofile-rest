@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 (http://quip1:6060/qiprofile-rest) for change details.
 
+2.3.2 / 2014-12-17
+------------------
+* Adapt for PyPI.
+
 2.3.1 / 2014-12-02
 ------------------
 * Move modeling to registration configuration and scan set.
