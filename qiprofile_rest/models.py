@@ -188,23 +188,11 @@ class Modelable(mongoengine.EmbeddedDocument):
     
     meta = dict(allow_inheritance=True)
         
-    modeling = fields.ListField(fields.EmbeddedDocumentField('Modeling'))
+    modeling = fields.DictField(field=fields.EmbeddedDocumentField('Modeling'))
     """
     PK modeling performed on subject scans grouped by type or registrations
     grouped by registration configuration.
     """
-
-
-class ScanSet(Modelable):
-    """
-    A consistent set of scans for a given scan type. This is the concrete
-    subclass of the abstract Modelable class for scans. ScanSet is a marker
-    class without fields.
-    
-    Note: The subject holds a {scan type: scan set} dictionary. Therefore, it
-    is unnecessary to redundantly have a scan type field in this ScanSet class.
-    """
-    pass
 
 
 class Registration(ImageContainer):
@@ -237,6 +225,21 @@ class Registration(ImageContainer):
     """The registration XNAT resource name, e.g. ``reg_k3RtZ``."""
 
 
+class ScanSet(Modelable):
+    """
+    A consistent set of scans for a given scan type. This is the concrete
+    subclass of the abstract Modelable class for scans.
+    
+    Note: The subject holds a {scan type: scan set} dictionary. Therefore, it
+    is unnecessary to redundantly have a scan type field in this ScanSet class.
+    """
+    
+    registration = fields.DictField(
+        field=fields.EmbeddedDocumentField(Registration.Configuration)
+    )
+    """The registration {key: configuration} dictionary."""
+
+
 class SubjectDetail(mongoengine.Document):
     """
     The patient detail aggregate. The Mongodb quiprofile_subject_detail
@@ -247,11 +250,6 @@ class SubjectDetail(mongoengine.Document):
     
     # The {scan type: ScanSet} dictionary
     scan_sets = fields.DictField(field=fields.EmbeddedDocumentField(ScanSet))
-    
-    # The {configuration name: configuration} dictionary.
-    registration_configurations = fields.DictField(
-        field=fields.EmbeddedDocumentField(Registration.Configuration)
-    )
 
     birth_date = fields.DateTimeField()
 

@@ -51,30 +51,49 @@ class TestSeed(object):
         for session in sessions:
             self._validate_session(subject, session)
         
-        # The registration configuration has modeling.
-        assert_equal(len(subject.detail.registration_configurations), 1,
-                     "%s Subject %s registration configurations size is incorrect: %d" %
-                     (subject.collection, subject.number, len(subject.detail.registration_configurations)))
-        reg_cfg = next(subject.detail.registration_configurations.itervalues())
+        # There are scan sets.
+        scan_sets = subject.detail.scan_sets
+        assert_is_not_none(scan_sets, "%s Subject %s is missing scan sets" %
+                                       (subject.collection, subject.number))
+        assert_equal(set(scan_sets.keys()), set(['t1', 't2']),
+                     "%s Subject %s scan set keys are incorrect: %s" %
+                     (subject.collection, subject.number, scan_sets.keys()))
+        
+        # The T1 scan set has a registration.
+        t1_scan_set = scan_sets['t1']
+        reg_cfgs = t1_scan_set.registration
+        assert_is_not_none(reg_cfgs, "%s Subject %s is missing registration"
+                                     " configurations" %
+                                     (subject.collection, subject.number))
+        assert_equal(len(reg_cfgs), 1,
+                     "%s Subject %s registration configurations size is"
+                     " incorrect: %d" %
+                     (subject.collection, subject.number, len(reg_cfgs)))
+        reg_cfg = next(reg_cfgs.itervalues())
         assert_is_not_none(reg_cfg.parameters,
-                           "%s Subject %s registration configuration is missing parameters" %
-                           (subject.collection, subject.number))
+                           "%s Subject %s registration configuration is missing"
+                           " parameters" % (subject.collection, subject.number))
         assert_equal(reg_cfg.parameters, seed.REG_PARAMS,
                      "%s Subject %s registration parameters are incorrect: %s" %
                      (subject.collection, subject.number, reg_cfg.parameters))
+        
+        # The registration configuration is modeled.
         assert_is_not_none(reg_cfg.modeling, "%s is missing modeling" %
                                              subject)
-        assert_is_not_none(reg_cfg.modeling.input_parameters,
+        assert_equal(len(reg_cfg.modeling), 1, "%s modeling length is incorrect: %d" %
+                                               (subject, len(reg_cfg.modeling)))
+        mdl = next(reg_cfg.modeling.itervalues())
+        assert_is_not_none(mdl.input_parameters,
                            "%s Subject %d modeling is missing the input parameters" %
                            (subject.collection, subject.number))
         if subject.collection == 'Breast':
             mdl_result_len = 4
         elif subject.collection == 'Sarcoma':
             mdl_result_len = 3
-        assert_equal(len(reg_cfg.modeling.results), mdl_result_len,
+        assert_equal(len(mdl.results), mdl_result_len,
                      "%s Subject %s modeling results size is incorrect: %d" %
-                     (subject.collection, subject.number, len(reg_cfg.modeling.results)))
-        mdl_result = reg_cfg.modeling.results[0]
+                     (subject.collection, subject.number, len(mdl.results)))
+        mdl_result = mdl.results[0]
         fxl_k_trans = mdl_result.fxl_k_trans
         assert_is_not_none(fxl_k_trans, ("%s Subject %d modeling is"
                                          " missing a fxl_k_trans parameter") %
@@ -142,6 +161,7 @@ class TestSeed(object):
                                            " is missing a tau_i filename") %
                                            (subject.collection, subject.number))
 
+        # There are three treatments.
         treatments = subject.detail.treatments
         assert_equal(len(treatments), 3,
                      "%s Subject %d treatments count is incorrect: %d" %
@@ -223,7 +243,7 @@ class TestSeed(object):
         assert_equal(len(scans), 2, "%s session %d scan count is incorrect: %d" %
                                     (subject, session.number, len(scans)))
         
-        # The T1 scan
+        # The T1 scan.
         t1_scan = scans.get('t1', None)
         assert_is_not_none(t1_scan, "%s session %d is missing the T1 scan" %
                                         (subject, session.number))

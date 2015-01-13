@@ -7,6 +7,7 @@ import random
 import math
 from decimal import Decimal
 from mongoengine import connect
+from qiutil import uid
 from qiprofile_rest import choices
 from qiprofile_rest.models import (Subject, SubjectDetail, Session, SessionDetail,
                                    Modeling, ModelingResult, ModelingParameter,
@@ -281,30 +282,33 @@ def _create_subject_detail(collection, subject):
 
     # Make the sessions.
     session_cnt = collection.visit_count
-    
-    # The scan sets.
-    scan_sets = {scan_type: ScanSet() for scan_type in Scan.SCAN_TYPES}
-
-    # The registration configuration dictionary key.
-    reg_cfg_key = "reg_7uPvs%02d" % subject.number
 
     # The modeling input parameters.
     mdl_params = dict(r1_0_val=0.7, baseline_end_idx=1)
     # The modeling object.
     modeling = Modeling(technique='Bolero', input_parameters=mdl_params,
                         results=[])
+
+    # The registration configuration dictionary key.
+    reg_cfg_key = "reg_%s" % uid.generate_string_uid()
+    
+    # The modeling dictionary key.
+    mdl_key = "pk_%s" % uid.generate_string_uid()
     
     # The registration configuration.
     reg_cfg = Registration.Configuration(
         technique = 'ANTS',
         parameters=REG_PARAMS,
-        modeling=[modeling]
+        modeling={mdl_key: modeling}
     )
     reg_cfg_dict = {reg_cfg_key: reg_cfg}
     
+    # The scan sets.
+    scan_sets = dict(t1=ScanSet(registration=reg_cfg_dict),
+                     t2=ScanSet())
+    
     # The sessions.
-    sessions = [_create_session(collection, subject, sess_nbr,
-                                scan_sets.keys(), reg_cfg_dict)
+    sessions = [_create_session(collection, subject, sess_nbr, reg_cfg_dict)
                 for sess_nbr in range(1, session_cnt + 1)]
 
     # The neodjuvant treatment starts a few days after the first visit.
@@ -372,8 +376,7 @@ def _create_subject_detail(collection, subject):
     return SubjectDetail(birth_date=birth_date, races=races, gender=gender,
                          weight=weight, ethnicity=ethnicity,
                          encounters=encounters, treatments=treatments,
-                         sessions=sessions, scan_sets=scan_sets,
-                         registration_configurations=reg_cfg_dict)
+                         sessions=sessions, scan_sets=scan_sets)
 
 
 def _choose_race():
@@ -443,8 +446,7 @@ TAU_I_FILE_NAME = 'tau_i_trans.nii.gz'
 
 COLOR_TABLE_FILE_NAME = 'etc/jet_colors.txt'
 
-def _create_session(collection, subject, session_number,
-                    scan_types, reg_cfg_dict):
+def _create_session(collection, subject, session_number, reg_cfg_dict):
     # Stagger the inter-session duration.
     date = _create_session_date(subject, session_number)
 
@@ -452,22 +454,25 @@ def _create_session(collection, subject, session_number,
     arv = int(round((0.5 - random.random()) * 4)) + AVG_BOLUS_ARRIVAL_NDX
     # Make the series list.
     series = _create_all_series(collection)
+    
     # Make the scans.
     t1_scan = _create_t1_scan(subject, session_number, series, arv,
                               reg_cfg_dict)
     t2_scan = _create_t2_scan(subject, session_number, series, arv)
     scans = dict(t1=t1_scan, t2=t2_scan)
+    
     # Make the session detail.
     detail = SessionDetail(bolus_arrival_index=arv, series=series,
                            scans=scans)
+    
     # Save the detail, since it is not embedded.
     detail.save()
 
-    # The modeling resource.
+    # The session modeling results.
     for reg_cfg_key, reg_cfg in reg_cfg_dict.iteritems():
-        reg = t1_scan.registrations[reg_cfg_key]
         mdl_result = _create_modeling_result(subject, session_number)
-        reg_cfg.modeling[0].results.append(mdl_result)
+        for mdl in reg_cfg.modeling.itervalues():
+          mdl.results.append(mdl_result)
 
     return Session(number=session_number, acquisition_date=date,
                    detail=detail)
@@ -475,7 +480,7 @@ def _create_session(collection, subject, session_number,
 
 def _create_modeling_result(subject, session_number):
     # The modeling resource name.
-    resource = "pk_vH4wk%02d" % session_number
+    resource = "pk_%s" % uid.generate_string_uid()
     
     # Add modeling parameters with a random offset.
     factor = 1 + ((random.random() - 0.5) * 0.4)
@@ -564,7 +569,7 @@ def _create_t2_scan(subject, session_number, series, bolus_arrival_index):
 
 
 def _create_registration(subject, session_number, series, bolus_arrival_index):
-    resource = "reg_p6Lcw%02d" % session_number
+    resource = "reg_%s" % uid.generate_string_uid()
     files = _create_registration_filenames(subject, session_number, resource,
                                            series)
     intensity = _create_intensity(len(series), bolus_arrival_index)
