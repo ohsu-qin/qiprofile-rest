@@ -252,10 +252,10 @@ class TestSeed(object):
                                            " intensity" % (subject, session.number))
         
         # Validate the registration.
-        assert_true(not not t1_scan.registrations,
+        assert_true(not not t1_scan.registration,
                "%s session %d registration is missing a registration" %
                (subject, session.number))
-        reg = next(t1_scan.registrations.itervalues())
+        reg = next(t1_scan.registration.itervalues())
 
         reg_intensity = reg.intensity
         assert_is_not_none(reg.intensity,

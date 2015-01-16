@@ -558,7 +558,7 @@ def _create_t1_scan(subject, session_number, series, bolus_arrival_index,
                                  bolus_arrival_index)
             for reg_cfg_key in reg_cfg_dict.iterkeys()}
 
-    return Scan(scan_type='t1', files=files, intensity=intensity, registrations=regs)
+    return Scan(scan_type='t1', files=files, intensity=intensity, registration=regs)
 
 
 def _create_t2_scan(subject, session_number, series, bolus_arrival_index):

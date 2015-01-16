@@ -124,7 +124,7 @@ class Scan(ImageContainer):
         required=True
     )
     
-    registrations = fields.DictField(
+    registration = fields.DictField(
         field=mongoengine.EmbeddedDocumentField('Registration')
     )
     """
