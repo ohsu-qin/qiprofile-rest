@@ -1,6 +1,6 @@
 """The Imaging Profile REST API django application."""
 
-__version__ = '2.3.3'
+__version__ = '2.3.4'
 """
 The one-based major.minor.patch version.
 The version numbering scheme loosely follows http://semver.org/.

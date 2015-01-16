@@ -40,7 +40,6 @@ setup(
         'Development Status :: 3 - Alpha',
         'Topic :: Scientific/Engineering :: Bio-Informatics',
         'Environment :: Web Environment',
-        'Framework :: Django'
         'Intended Audience :: Science/Research',
         'License :: Other/Proprietary License',
         'Operating System :: OS Independent',

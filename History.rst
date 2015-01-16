@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 (http://quip1:6060/qiprofile-rest) for change details.
 
+2.3.4 / 2015-01-16
+------------------
+* Remove incorrect Trove classifier.
+
 2.3.3 / 2015-01-16
 ------------------
 * Move registration configuration under scan set.
