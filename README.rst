@@ -7,4 +7,4 @@ See the `documentation`_ for more information.
 
 .. Targets:
 
-.. _documentation: http://quip1.ohsu.edu:8080/qiprofile
+.. _documentation: http://qiprofile-rest.readthedocs.org/en/latest/
