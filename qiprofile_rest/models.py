@@ -8,9 +8,9 @@ The data capture client has the following responsibility:
 
 *  Validate the data upon input as determined by the model
    validation below.
-   
+
 * Resolve conflicts between data capture and the model, e.g. the
-   default value or validation. 
+   default value or validation.
 """
 
 import re
@@ -93,7 +93,7 @@ class LabelMap(mongoengine.EmbeddedDocument):
 
     filename = fields.StringField(required=True)
     """The label map file path relative to the web app root."""
-    
+
     color_table = fields.StringField()
     """The color map lookup table file path relative to the web app root."""
 
@@ -115,15 +115,15 @@ class ImageContainer(mongoengine.EmbeddedDocument):
 
 class Scan(ImageContainer):
     """The patient image scan."""
-    
+
     SCAN_TYPES = ['t1', 't2']
-    
+
     scan_type = fields.StringField(
         choices=SCAN_TYPES,
         max_length=choices.max_length(SCAN_TYPES),
         required=True
     )
-    
+
     registration = fields.DictField(
         field=mongoengine.EmbeddedDocumentField('Registration')
     )
@@ -138,7 +138,7 @@ class Modeling(mongoengine.EmbeddedDocument):
     The QIN pharmicokinetic modeling run over a consistent list of image
     containers.
     """
-    
+
     technique = fields.StringField()
 
     input_parameters = fields.DictField()
@@ -180,14 +180,14 @@ class ModelingParameter(mongoengine.EmbeddedDocument):
 
     average = fields.FloatField(required=True)
     """The average parameter value over all voxels."""
-    
+
     label_map = fields.EmbeddedDocumentField('LabelMap')
 
 
 class Modelable(mongoengine.EmbeddedDocument):
-    
+
     meta = dict(allow_inheritance=True)
-        
+
     modeling = fields.DictField(field=fields.EmbeddedDocumentField('Modeling'))
     """
     PK modeling performed on subject scans grouped by type or registrations
@@ -200,14 +200,14 @@ class Registration(ImageContainer):
     The patient image registration that results from processing
     the image scan.
     """
-    
+
     class Configuration(Modelable):
         """
         The registration technique and input parameters.
         Since the configuration binds registrations across sessions,
         the Configuration objects are embedded in the SubjectDetail.
         """
-        
+
         TECHNIQUE = ['ANTS', 'FNIRT']
 
         technique = fields.StringField(
@@ -216,7 +216,7 @@ class Registration(ImageContainer):
             required=True
         )
         """The registration technique."""
-        
+
         parameters = fields.DictField()
         """The registration input parameters."""
 
@@ -229,11 +229,11 @@ class ScanSet(Modelable):
     """
     A consistent set of scans for a given scan type. This is the concrete
     subclass of the abstract Modelable class for scans.
-    
+
     Note: The subject holds a {scan type: scan set} dictionary. Therefore, it
     is unnecessary to redundantly have a scan type field in this ScanSet class.
     """
-    
+
     registration = fields.DictField(
         field=fields.EmbeddedDocumentField(Registration.Configuration)
     )
@@ -247,7 +247,7 @@ class SubjectDetail(mongoengine.Document):
     """
 
     meta = dict(collection='qiprofile_subject_detail')
-    
+
     # The {scan type: ScanSet} dictionary
     scan_sets = fields.DictField(field=fields.EmbeddedDocumentField(ScanSet))
 
@@ -333,7 +333,7 @@ class Treatment(mongoengine.EmbeddedDocument):
     begin_date = fields.DateTimeField(required=True)
 
     end_date = fields.DateTimeField(required=True)
-    
+
     dosages = fields.ListField(
         field=mongoengine.EmbeddedDocumentField('Dosage')
     )
@@ -347,9 +347,9 @@ class Dosage(mongoengine.EmbeddedDocument):
     amount = fields.EmbeddedDocumentField('Measurement', required=True)
 
     start = fields.DateTimeField()
-    
+
     times_per_day = fields.IntField()
-    
+
     days = fields.IntField()
 
 
@@ -360,7 +360,7 @@ class Agent(mongoengine.EmbeddedDocument):
 
 
 class Drug(Agent):
-    
+
     name = fields.StringField(required=True)
     """The official listed drug name."""
 
@@ -373,56 +373,56 @@ class Radiation(Agent):
     form choices to this list where possible, but allow for free-form text where
     necessary.
     """
-    
+
     form = fields.StringField()
 
 
 class OtherAgent(Agent):
-    
+
     name = fields.StringField(required=True)
 
 
 class Measurement(mongoengine.EmbeddedDocument):
     """
     A scientific measurement.
-    
+
     The measurement is a quantitative amount associated with a unit.
     The unit is the Unit as captured and displayed. The amount is
     expressed as a python Decimal in unscaled units. If the constructor
     is called with a non-Decimal numeric amount, then the value is
     converted to a Decimal, e.g.::
-          
+
         Measurement(amount=0.006, unit=Weight())
-    
+
     is equivalent to::
 
         from decimal import Decimal
         Measurement(amount=Decimal(0.006), unit=Weight())
-    
+
     :Note: the client is responsible for saving the measurement amount
     in unscaled units and converting the database amount to the preferred
     unit. For example, 40mg is saved as follows::
-          
+
         Measurement(amount=0.04, unit=Volume())
-    
+
     which is equivalent to::
 
         Measurement(amount=0.04, unit=Volume(scale='m'))
-    
+
     When this measurement is read from the database, the client then
     converts the measurement to the preferred display value ``40mg``.
-    
+
     The measurement unit can be qualified by a second ``per_unit``
     dimension, e.g. 2 mg/kg dosage per patient weight is expressed
     as::
 
         Measurement(amount=0.002, unit=Weight(), per_unit=Weight(scale='k'))
-    
+
     :Note: the amount is a :class:`Decimal` embedded object rather than
     the broken MongoEngine ``DecimalField`` (see the :class:`Decimal`
     comment).
     """
-    
+
     def __init__(self, *args, **kwargs):
         # Convert the amount to a Decimal, if necessary.
         # The amount can be the first positional argument
@@ -439,11 +439,11 @@ class Measurement(mongoengine.EmbeddedDocument):
             return Decimal(value)
         else:
             return value
-    
+
     amount = fields.EmbeddedDocumentField('Decimal', required=True)
-    
+
     unit = fields.EmbeddedDocumentField('Unit')
-    
+
     per_unit = fields.EmbeddedDocumentField('Unit')
 
 
@@ -452,24 +452,24 @@ class Decimal(mongoengine.EmbeddedDocument):
     This Decimal document class is a work-around for the broken
     MongoEngine DecimalField
     (cf. https://github.com/MongoEngine/mongoengine/issues?q=is%3Aissue+is%3Aopen+decimal).
-    
+
     Decimal has a float value and an optional precision. The default
     precision is determined as follows:
-    
+
     * If the Decimal value is initialized with a python ``decimal.Decimal``
       or string, then the default precision is the number of decimal places
       expressed in that value, e.g.::
-    
+
           Decimal('1.24').precision #=> 2
           Decimal(decimal.Decimal('1.4')).precision #=> 1
-    
+
     * If the Decimal value is initialized with an integer, then the default
             precision is zero, e.g.::
 
                 Decimal(1).precision #=> 0
     """
     # TODO - migrate to DecimalField when it is fixed in MongoEngine.
-    
+
     def __init__(self, *args, **kwargs):
         # The positional arguments will be replaced by keyword arguments.
         if args:
@@ -481,13 +481,13 @@ class Decimal(mongoengine.EmbeddedDocument):
         else:
             value = kwargs.get('value')
             precision = kwargs.get('precision')
-        
+
         # Convert the value to a float, if necessary.
         if value != None:
             value = float(value)
         # Set the value keyword argument.
         kwargs['value'] = value
-        
+
         # If the precision is not specified, then determine a default if
         # possible.
         if precision == None:
@@ -501,7 +501,7 @@ class Decimal(mongoengine.EmbeddedDocument):
 
         # Set the precision keyword argument.
         kwargs['precision'] = precision
-        
+
         super(Decimal, self).__init__(**kwargs)
 
     def canonical(self):
@@ -522,11 +522,11 @@ class Decimal(mongoengine.EmbeddedDocument):
         else:
             pat = '%.' + ("%s" % self.precision) + 'f'
             return pat % self.value
-            
+
     value = fields.FloatField(required=True)
-    
+
     precision = fields.IntField()
-    
+
 
 class Unit(mongoengine.EmbeddedDocument):
     """
@@ -534,13 +534,13 @@ class Unit(mongoengine.EmbeddedDocument):
     Each unit has a scaling factor with the default scaling factor
     defined in the concrete Unit subclass. Each Unit subclass has
     the following class variables:
-    
+
     * ``BASE`` - the standard unscaled metric unit abbreviation,
       e.g. ``m`` for the meter Extent unit.
-    
+
     * ``SCALES`` - the recommended scaling factors, e.g. ``m`` for
        milli and ``c`` for centi.
-    
+
     The scales are a list in preference order, e.g. the ``Extent.SCALES``
     value ``['c', 'm']`` implies that the preferred extent unit display
     is ``cm`` (centimeter) and an edit form should show the scales ``c``
@@ -550,7 +550,7 @@ class Unit(mongoengine.EmbeddedDocument):
     display is ``Gy`` (Gray) and an edit form should show the scales
     blank and ``c``, in that order, defaulting to blank (scaling factor
     1).
-    
+
     These class variables are advisory. The client is responsible for
     displaying the base and scales and converting from a scaled value
     to an unscaled value before saving the measurement to the database.
@@ -565,7 +565,7 @@ class Extent(Unit):
 
     BASE = 'm'
     """The meter designator."""
-    
+
     scale = fields.StringField(default='c')
     """The default extent is centimeter."""
 
@@ -576,7 +576,7 @@ class Weight(Unit):
 
     BASE = 'g'
     """The gram designator."""
-    
+
     scale = fields.StringField(default='m')
     """The default weight is milligram."""
 
@@ -587,7 +587,7 @@ class Volume(Unit):
 
     BASE = 'l'
     """The liter designator."""
-    
+
     scale = fields.StringField(default='m')
     """The default volume is milliliter."""
 
@@ -599,7 +599,7 @@ class Radiation(Unit):
 
     BASE = 'Gy'
     """The Gray designator."""
-    
+
     scale = fields.StringField()
     """The default radiation is an unscaled Gray."""
 
@@ -643,7 +643,7 @@ class BreastSurgery(Surgery):
     """
 
     surgery_type = fields.StringField()
-    
+
     partial = fields.BooleanField(default=False)
 
 
@@ -667,6 +667,11 @@ class Pathology(Evaluation):
     tnm = fields.EmbeddedDocumentField('TNM')
 
 
+class NormalizedAssayField(fields.IntField):
+    def validate(self, value, clean=True):
+        return value > 0 and value <= 15
+
+
 class BreastPathology(Pathology):
     """The QIN breast patient pathology summary."""
 
@@ -677,6 +682,44 @@ class BreastPathology(Pathology):
         def validate(self, value, clean=True):
             return value > 0 and value <= 100
 
+    class NormalizedAssay(mongoengine.EmbeddedDocument):
+        """The Breast genomics panel normalized to reference genes."""
+
+        class HER2(mongoengine.EmbeddedDocument):
+            grb7 = NormalizedAssayField()
+            her2 = NormalizedAssayField()
+
+        class Estrogen(mongoengine.EmbeddedDocument):
+            er = NormalizedAssayField()
+            pgr = NormalizedAssayField()
+            bcl2 = NormalizedAssayField()
+            scube2 = NormalizedAssayField()
+
+        class Proliferation(mongoengine.EmbeddedDocument):
+            ki67 = NormalizedAssayField()
+            stk_15 = NormalizedAssayField()
+            survivin = NormalizedAssayField()
+            ccnb1 = NormalizedAssayField()
+            mybl2 = NormalizedAssayField()
+
+        class Invasion(mongoengine.EmbeddedDocument):
+            mmp11 = NormalizedAssayField()
+            ctsl2 = NormalizedAssayField()
+
+        gstm1 = NormalizedAssayField()
+
+        cd68 = NormalizedAssayField()
+
+        bag1 = NormalizedAssayField()
+
+        her2 = fields.EmbeddedDocumentField(HER2)
+
+        estrogen = fields.EmbeddedDocumentField(Estrogen)
+
+        proliferation = fields.EmbeddedDocumentField(Proliferation)
+
+        invasion = fields.EmbeddedDocumentField(Invasion)
+
     estrogen = fields.EmbeddedDocumentField('HormoneReceptorStatus')
 
     progesterone = fields.EmbeddedDocumentField('HormoneReceptorStatus')
@@ -685,8 +728,9 @@ class BreastPathology(Pathology):
 
     her2_neu_fish = fields.BooleanField(choices=choices.POS_NEG_CHOICES)
 
-    ki_67 = KI67Field()
+    ki67 = KI67Field()
 
+    normalized_assay = fields.EmbeddedDocumentField(NormalizedAssay)
 
 class SarcomaPathology(Pathology):
     """The QIN sarcoma patient pathology summary."""
@@ -719,7 +763,7 @@ class Outcome(mongoengine.EmbeddedDocument):
 class TNM(Outcome):
     """
     The TNM tumor staging. The TNM fields are as follows:
-    
+
       * size - primary tumor size (T)
 
       * lymph_status - regional lymph nodes (N)
@@ -735,12 +779,12 @@ class TNM(Outcome):
       * lymphatic_vessel_invasion (L)
 
       * vein_invasion (V)
-    
-    The size is an aggregate Size field. 
+
+    The size is an aggregate Size field.
     See http://www.cancer.gov/cancertopics/factsheet/detection/staging for
     an overview. See http://en.wikipedia.org/wiki/TNM_staging_system and
     http://cancerstaging.blogspot.com/ for the value definition.
-        
+
     Note:: The size and lymph_status choices can be further constrained by
         tumor type. Since :class:`TNM` is a generic class, these constraints
         are not enforced in this TNM class. Rather, the REST client is
@@ -752,7 +796,7 @@ class TNM(Outcome):
     class Size(mongoengine.EmbeddedDocument):
         """
         The TNM primary tumor size field.
-        
+
         Note:: The size score choices can be further constrained by tumor
             type. For example, the sarcoma tumor_size choices are 0, 1 or 2
             and suffix choices are ``a`` or ``b``. See :class:`TNM` for a
@@ -764,12 +808,12 @@ class TNM(Outcome):
         PREFIXES = ['c', 'p', 'y', 'r', 'a', 'u']
 
         SUFFIXES = ['a', 'b', 'c']
-        
+
         SUFFIX_CHOICES = dict(
             Any=['a', 'b', 'c'],
             Sarcoma=['a', 'b']
         )
-        
+
         TUMOR_SIZE_CHOICES = dict(
             Any=range(0, 5),
             Sarcoma=range(0, 3)
@@ -794,7 +838,7 @@ class TNM(Outcome):
             """
             if tumor_type not in TNM.Size.TUMOR_SIZE_CHOICES:
                 tumor_type = 'Any'
-            
+
             return TNM.Size.TUMOR_SIZE_CHOICES[tumor_type]
 
         @staticmethod
@@ -805,7 +849,7 @@ class TNM(Outcome):
             """
             if tumor_type not in TNM.Size.SUFFIX_CHOICES:
                 tumor_type = 'Any'
-            
+
             return TNM.Size.SUFFIX_CHOICES[tumor_type]
 
         SIZE_REGEX = re.compile(SIZE_PAT, re.VERBOSE)
@@ -822,7 +866,7 @@ class TNM(Outcome):
             type choices to this list where possible, but allow for free-form text where
             necessary.
             """
-            
+
             invasive_type = fields.StringField()
 
         in_situ = fields.EmbeddedDocumentField(InSitu)
@@ -838,19 +882,19 @@ class TNM(Outcome):
                 size = str(self.tumor_size)
             else:
                 size = 'x'
-            
+
             return "%sT%s%s" % (prefix, size, suffix)
-        
+
         @classmethod
         def parse(klass, value):
-          """
-          Parses the given string into a new Size.
-          
-          @param value the input string
-          @return the new Size object
-          """
-          match = klass.SIZE_REGEX.match(value)
-          return klass(**match.groupdict())
+            """
+            Parses the given string into a new Size.
+
+            @param value the input string
+            @return the new Size object
+            """
+            match = klass.SIZE_REGEX.match(value)
+            return klass(**match.groupdict())
 
         def clean(self):
             """
@@ -869,7 +913,7 @@ class TNM(Outcome):
                                           " True cannot have a suffix %s" %
                                           self.suffix)
             return True
-        
+
     LYMPH_STATUS_CHOICES = dict(
         Any=range(0, 4),
         Sarcoma=range(0, 2)
@@ -903,7 +947,7 @@ class TNM(Outcome):
         """
         if tumor_type not in TNM.LYMPH_STATUS_CHOICES:
             tumor_type = 'Any'
-        
+
         return TNM.LYMPH_STATUS_CHOICES[tumor_type]
 
 
@@ -924,9 +968,9 @@ class ModifiedBloomRichardsonGrade(Grade):
     COMPONENT_CHOICES = range(1, 4)
 
     tubular_formation = fields.IntField(choices=COMPONENT_CHOICES)
-    
+
     nuclear_pleomorphism = fields.IntField(choices=COMPONENT_CHOICES)
-    
+
     mitotic_count = fields.IntField(choices=COMPONENT_CHOICES)
 
 

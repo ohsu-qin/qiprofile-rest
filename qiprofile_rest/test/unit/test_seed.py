@@ -215,6 +215,60 @@ class TestSeed(object):
                                      " a TNM" % subject)
         assert_is_not_none(path.tnm.tumor_type, "%s biopsy TNM is missing the"
                                      " tumor type" % subject)
+        
+        # Breast has specialized tests.
+        if subject.collection == 'Breast':
+            assert_is_not_none(path.estrogen, "%s biopsy pathology report is"
+                                              " missing an estrogen status" %
+                                              subject)
+            assert_is_not_none(path.progesterone, "%s biopsy pathology report"
+                                                  " is missing a progesterone"
+                                                  " status" % subject)
+            assert_is_not_none(path.her2_neu_ihc, "%s biopsy pathology report"
+                                                  " is missing a HER2 NEU IHC"
+                                                  " status" % subject)
+            assert_is_not_none(path.her2_neu_fish, "%s biopsy pathology report"
+                                                   " is missing a HER2 NEU FISH"
+                                                   " status" % subject)
+            assert_is_not_none(path.ki67, "%s biopsy pathology report is missing"
+                                          " a Ki67 result" % subject)
+            # HER2 positive and no lymph nodes has a normalized assay.
+            if path.estrogen.positive and not path.tnm.lymph_status:
+                assay = path.normalized_assay
+                gstm1 = _random_int(0, 15)
+                cd68 = _random_int(0, 15)
+                bag1 = _random_int(0, 15)
+                her2 = self._create_HER2_group()
+                estrogen = self._create_estrogen_group()
+                proliferation = self._create_proliferation_group()
+                invasion = self._create_invasion_group()
+                assert_is_not_none(assay, "%s biopsy pathology report with HER2"
+                                          " positive and no lymph nodes is missing"
+                                          " a normalized assay" % subject)
+                assert_is_not_none(assay.gstm1, "%s biopsy pathology report"
+                                                " normalized assay is missing"
+                                                " a GSTM1 result" % subject)
+                assert_is_not_none(assay.cd68, "%s biopsy pathology report"
+                                               " normalized assay is missing"
+                                               " a CD68 result" % subject)
+                assert_is_not_none(assay.bag1, "%s biopsy pathology report"
+                                               " normalized assay is missing"
+                                               " a BAG1 result" % subject)
+                assert_is_not_none(assay.her2, "%s biopsy pathology report"
+                                               " normalized assay is missing"
+                                               " the HER2 group" % subject)
+                assert_is_not_none(assay.estrogen, "%s biopsy pathology report"
+                                                   " normalized assay is missing"
+                                                   " the estrogen group" % subject)
+                assert_is_not_none(assay.proliferation, "%s biopsy pathology report"
+                                                        " normalized assay is missing"
+                                                        " the proliferation group" %
+                                                        subject)
+                assert_is_not_none(assay.invasion, "%s biopsy pathology report"
+                                                   " normalized assay is missing"
+                                                   " the invasion group" % subject)
+                
+        
         surgery = next(((enc for enc in encounters if isinstance(enc, Surgery))),
                       None)
         assert_is_not_none(surgery, "%s Subject %d is missing a surgery" %

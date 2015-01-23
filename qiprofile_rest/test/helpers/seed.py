@@ -49,9 +49,9 @@ class Breast(Collection):
                                      nuclear_pleomorphism=nuclear_pleomorphism,
                                      mitotic_count=mitotic_count)
 
-    def create_pathology(self):
+    def create_pathology(self, **opts):
         # The TNM score.
-        tnm = _create_tnm(self, 'p')
+        tnm = _create_tnm(self, 'p', **opts)
 
         # The estrogen status.
         positive = _random_boolean()
@@ -78,13 +78,52 @@ class Breast(Collection):
         her2_neu_fish = _random_boolean()
 
         # KI67 is a percent.
-        ki_67 = _random_int(0, 100)
+        ki67 = _random_int(0, 100)
+
+        panels = {}
+        if estrogen.positive and not tnm.lymph_status:
+            panels['normalized_assay'] = self._create_normalized_assay()
 
         return BreastPathology(tnm=tnm, estrogen=estrogen,
                                progesterone=progesterone,
                                her2_neu_ihc=her2_neu_ihc,
                                her2_neu_fish=her2_neu_fish,
-                               ki_67=ki_67)
+                               ki67=ki67, **panels)
+
+    def _create_normalized_assay(self):
+        gstm1 = _random_int(0, 15)
+        cd68 = _random_int(0, 15)
+        bag1 = _random_int(0, 15)
+        her2 = self._create_HER2_group()
+        estrogen = self._create_estrogen_group()
+        proliferation = self._create_proliferation_group()
+        invasion = self._create_invasion_group()
+        groups = dict(her2=her2, estrogen=estrogen,
+                      proliferation=proliferation, invasion=invasion)
+        
+        return BreastPathology.NormalizedAssay(gstm1=gstm1, cd68=cd68,
+                                               bag1=bag1, **groups)
+
+    def _create_HER2_group(self):
+        grb7 = _random_int(0, 15)
+        her2 = _random_int(0, 15)
+        
+    def _create_estrogen_group(self):
+        pgr = _random_int(0, 15)
+        bcl2 = _random_int(0, 15)
+        scube2 = _random_int(0, 15)
+
+    def _create_proliferation_group(self):
+        ki67 = _random_int(0, 15)
+        stk_15 = _random_int(0, 15)
+        survivin = _random_int(0, 15)
+        ccnb1 = _random_int(0, 15)
+        mybl2 = _random_int(0, 15)
+
+    def _create_invasion_group(self):
+        mmp11 = _random_int(0, 15)
+        ctsl2 = _random_int(0, 15)
+
 
 class Sarcoma(Collection):
     SERIES_NUMBERS = [9, 10] + [13 + 2*n for n in range(0, 38)]
@@ -110,9 +149,9 @@ class Sarcoma(Collection):
         return FNCLCCGrade(differentiation=differentiation, mitotic_count=mitotic_count,
                            necrosis=necrosis)
         
-    def create_pathology(self):
+    def create_pathology(self, **opts):
         # The TNM score.
-        tnm = _create_tnm(self, 'p')
+        tnm = _create_tnm(self, 'p', **opts)
 
         # The tumor site.
         site = 'Thigh'
@@ -356,8 +395,13 @@ def _create_subject_detail(collection, subject):
     offset = _random_int(0, 10)
     biopsy_date = sessions[0].acquisition_date - timedelta(days=offset)
     
+    # Force the first breast patient to be free of lymph nodes,
+    # since we want at least one patient with a normalized assay.
+    opts = {}
+    if isinstance(collection, Breast) and subject.number == 1:
+        opts['lymph_status'] = 0
     # The biopsy has a pathology report.
-    biopsy_path = collection.create_pathology()
+    biopsy_path = collection.create_pathology(**opts)
     biopsy = Biopsy(date=biopsy_date, pathology=biopsy_path)
 
     # The surgery doesn't have an outcome.
@@ -412,7 +456,7 @@ def _choose_gender(collection):
         return choices.GENDER_CHOICES[index][0]
 
 
-def _create_tnm(collection, prefix=None):
+def _create_tnm(collection, prefix=None, **opts):
     grade = collection.create_grade()
     
     tumor_size_max = TNM.Size.tumor_size_choices(collection.name)[-1]
@@ -428,10 +472,15 @@ def _create_tnm(collection, prefix=None):
     lymph_status = _random_int(0, lymph_status_max)
     metastasis = _random_boolean()
     invasion = _random_boolean()
+    
+    # The value dictionary.
+    values = dict(tumor_type=collection.name, grade=grade, size=size,
+                  lymph_status=lymph_status, metastasis=metastasis,
+                  lymphatic_vessel_invasion=invasion)
+    # The options override the random values.
+    values.update(opts)
 
-    return TNM(tumor_type=collection.name, grade=grade, size=size,
-               lymph_status=lymph_status, metastasis=metastasis,
-               lymphatic_vessel_invasion=invasion)
+    return TNM(**values)
 
 
 FXL_K_TRANS_FILE_NAME = 'fxl_k_trans.nii.gz'
