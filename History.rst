@@ -1,9 +1,9 @@
 This history lists major release themes. See the GitHub commits
 (http://quip1:6060/qiprofile-rest) for change details.
 
-2.3.4 / 2015-01-16
+2.4.1 / 2015-01-26
 ------------------
-* Remove incorrect Trove classifier.
+* Add gene expression assay.
 
 2.3.3 / 2015-01-16
 ------------------
