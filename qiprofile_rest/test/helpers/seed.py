@@ -13,10 +13,13 @@ from qiprofile_rest.models import (Subject, SubjectDetail, Session, SessionDetai
                                    Modeling, ModelingResult, ModelingParameter,
                                    LabelMap, Series, Scan, ScanSet, Registration,
                                    Intensity, Probe, Treatment, Drug, Dosage,
-                                   Measurement, Weight,Biopsy, Surgery, Assessment,
-                                   GenericEvaluation, BreastPathology, SarcomaPathology,
-                                   TNM, ModifiedBloomRichardsonGrade, FNCLCCGrade, NecrosisPercentValue,
-                                   NecrosisPercentRange, HormoneReceptorStatus)
+                                   Measurement, Weight,Biopsy, Surgery,
+                                   Assessment, GenericEvaluation, TNM,
+                                   BreastPathology, BreastReceptorStatus,
+                                   HormoneReceptorStatus, BreastGeneticExpression,
+                                   NormalizedAssay, ModifiedBloomRichardsonGrade,
+                                   SarcomaPathology, FNCLCCGrade,
+                                   NecrosisPercentValue, NecrosisPercentRange)
 
 PROJECT = 'QIN_Test'
 
@@ -51,26 +54,47 @@ class Breast(Collection):
 
     def create_pathology(self, **opts):
         # The TNM score.
-        tnm = _create_tnm(self, 'p', **opts)
+        tnm_opts = opts.pop('tnm', {})
+        tnm = _create_tnm(self, 'p', **tnm_opts)
 
+        # Make the breast hormone status results.
+        hormone_receptors_opts = opts.pop('hormone_receptors', {})
+        hormone_receptors = self._create_hormone_receptors(**hormone_receptors_opts)
+
+        # Make the gene expression results.
+        gene_expr_opts = opts.pop('genetic_expression', {})
+        # If this subject is estrogen receptor-status-positive
+        # and has no lymph nodes, then create an assay.
+        if hormone_receptors.estrogen.positive and not tnm.lymph_status:
+            assay_opts = opts.pop('normalized_assay', {})
+            assay = self._create_normalized_assay(**assay_opts)
+            gene_expr_opts['normalized_assay'] = assay
+        genetic_expression = self._create_genetic_expression(**gene_expr_opts)
+        
+        values = dict(tnm=tnm, hormone_receptors=hormone_receptors,
+                      genetic_expression=genetic_expression)
+        values.update(opts)
+        
+        return BreastPathology(**values)
+
+        # HER2 NEU IHC is one of 0, 1, 2, 3.
+        her2_neu_ihc = _random_int(0, 3)
+
+        # HER2 NEU FISH is True (positive) or False (negative).
+        her2_neu_fish = _random_boolean()
+
+    def _create_hormone_receptors(self, **opts):
         # The estrogen status.
-        positive = _random_boolean()
-        quick_score = _random_int(0, 8)
-        intensity = _random_int(0, 100)
-        estrogen = HormoneReceptorStatus(hormone='estrogen',
-                                         positive=positive,
-                                         quick_score=quick_score,
-                                         intensity=intensity)
+        estrogen_opts = opts.pop('estrogen', {})
+        estrogen = self._create_hormone_status('estrogen', **estrogen_opts)
 
         # The progesterone status.
-        positive = _random_boolean()
-        quick_score = _random_int(0, 8)
-        intensity = _random_int(0, 100)
-        progesterone = HormoneReceptorStatus(hormone='progesterone',
-                                             positive=positive,
-                                             quick_score=quick_score,
-                                             intensity=intensity)
+        progesterone_opts = opts.pop('progesterone', {})
+        progesterone = self._create_hormone_status('progesterone', **progesterone_opts)
 
+        return BreastReceptorStatus(estrogen=estrogen, progesterone=progesterone)
+
+    def _create_genetic_expression(self, **opts):
         # HER2 NEU IHC is one of 0, 1, 2, 3.
         her2_neu_ihc = _random_int(0, 3)
 
@@ -79,18 +103,25 @@ class Breast(Collection):
 
         # KI67 is a percent.
         ki67 = _random_int(0, 100)
+        
+        values = dict(her2_neu_ihc=her2_neu_ihc, her2_neu_fish=her2_neu_fish,
+                      ki67=ki67)
+        values.update(opts)
 
-        panels = {}
-        if estrogen.positive and not tnm.lymph_status:
-            panels['normalized_assay'] = self._create_normalized_assay()
+        return BreastGeneticExpression(**values)
 
-        return BreastPathology(tnm=tnm, estrogen=estrogen,
-                               progesterone=progesterone,
-                               her2_neu_ihc=her2_neu_ihc,
-                               her2_neu_fish=her2_neu_fish,
-                               ki67=ki67, **panels)
+    def _create_hormone_status(self, hormone, **opts):
+        opts['hormone'] = hormone
+        positive = _random_boolean()
+        quick_score = _random_int(0, 8)
+        intensity = _random_int(0, 100)
+        values = dict(positive=positive, quick_score=quick_score,
+                      intensity=intensity)
+        values.update(opts)
 
-    def _create_normalized_assay(self):
+        return HormoneReceptorStatus(**values)
+
+    def _create_normalized_assay(self, **opts):
         gstm1 = _random_int(0, 15)
         cd68 = _random_int(0, 15)
         bag1 = _random_int(0, 15)
@@ -100,29 +131,41 @@ class Breast(Collection):
         invasion = self._create_invasion_group()
         groups = dict(her2=her2, estrogen=estrogen,
                       proliferation=proliferation, invasion=invasion)
-        
-        return BreastPathology.NormalizedAssay(gstm1=gstm1, cd68=cd68,
-                                               bag1=bag1, **groups)
+        values = dict(gstm1=gstm1, cd68=cd68, bag1=bag1, **groups)
+        values.update(opts)
+
+        return NormalizedAssay(**values)
 
     def _create_HER2_group(self):
         grb7 = _random_int(0, 15)
         her2 = _random_int(0, 15)
-        
+
+        return NormalizedAssay.HER2(grb7=grb7, her2=her2)
+
     def _create_estrogen_group(self):
+        er = _random_int(0, 15)
         pgr = _random_int(0, 15)
         bcl2 = _random_int(0, 15)
         scube2 = _random_int(0, 15)
 
+        return NormalizedAssay.Estrogen(er=er, pgr=pgr, bcl2=bcl2, scube2=scube2)
+
     def _create_proliferation_group(self):
         ki67 = _random_int(0, 15)
-        stk_15 = _random_int(0, 15)
+        stk15 = _random_int(0, 15)
         survivin = _random_int(0, 15)
         ccnb1 = _random_int(0, 15)
         mybl2 = _random_int(0, 15)
 
+        return NormalizedAssay.Proliferation(ki67=ki67, stk15=stk15,
+                                             survivin=survivin, ccnb1=ccnb1,
+                                             mybl2=mybl2)
+
     def _create_invasion_group(self):
         mmp11 = _random_int(0, 15)
         ctsl2 = _random_int(0, 15)
+
+        return NormalizedAssay.Invasion(mmp11=mmp11, ctsl2=ctsl2)
 
 
 class Sarcoma(Collection):
@@ -148,7 +191,7 @@ class Sarcoma(Collection):
 
         return FNCLCCGrade(differentiation=differentiation, mitotic_count=mitotic_count,
                            necrosis=necrosis)
-        
+
     def create_pathology(self, **opts):
         # The TNM score.
         tnm = _create_tnm(self, 'p', **opts)
@@ -166,7 +209,7 @@ class Sarcoma(Collection):
             stop = NecrosisPercentRange.UpperBound(value=low+10)
             necrosis_pct = NecrosisPercentRange(start=start, stop=stop)
 
-        # The histology                                      
+        # The histology
         histology = 'Fibrosarcoma'
 
         return SarcomaPathology(tnm=tnm, site=site, necrosis_pct=necrosis_pct,
@@ -221,11 +264,11 @@ def seed():
     """
     Populates the MongoDB database named ``qiprofile_test`` with
     three subjects each of the ``Breast`` and ``Sarcoma`` collection.
-    
+
     Note: existing subjects are not modified. In order to refresh the
     seed subjects, drop the ``qiprofile_test`` database first.
-    
-    
+
+
     @return: three :obj:`PROJECT` subjects for each collection in
         :obj:`COLLECTIONS`
     """
@@ -330,10 +373,10 @@ def _create_subject_detail(collection, subject):
 
     # The registration configuration dictionary key.
     reg_cfg_key = "reg_%s" % uid.generate_string_uid()
-    
+
     # The modeling dictionary key.
     mdl_key = "pk_%s" % uid.generate_string_uid()
-    
+
     # The registration configuration.
     reg_cfg = Registration.Configuration(
         technique = 'ANTS',
@@ -341,11 +384,11 @@ def _create_subject_detail(collection, subject):
         modeling={mdl_key: modeling}
     )
     reg_cfg_dict = {reg_cfg_key: reg_cfg}
-    
+
     # The scan sets.
     scan_sets = dict(t1=ScanSet(registration=reg_cfg_dict),
                      t2=ScanSet())
-    
+
     # The sessions.
     sessions = [_create_session(collection, subject, sess_nbr, reg_cfg_dict)
                 for sess_nbr in range(1, session_cnt + 1)]
@@ -358,7 +401,7 @@ def _create_subject_detail(collection, subject):
     neo_tx_end = sessions[-1].acquisition_date - timedelta(days=offset)
     neo_tx = Treatment(treatment_type='Neoadjuvant', begin_date=neo_tx_begin,
                        end_date=neo_tx_end)
-    
+
     # Breast patients have neodjuvant drugs.
     if isinstance(collection, Breast):
         # trastuzumab.
@@ -366,21 +409,21 @@ def _create_subject_detail(collection, subject):
         amt = .002 * subject.number
         trast_amt = Measurement(amount=amt, unit=Weight(), per_unit=Weight(scale='k'))
         trast_dosage = Dosage(agent=trast, amount=trast_amt)
-        
+
         # pertuzumab.
         pert = Drug(name='pertuzumab')
         amt = .006 * subject.number
         pert_amt = Measurement(amount=amt, unit=Weight(), per_unit=Weight(scale='k'))
         pert_dosage = Dosage(agent=pert, amount=pert_amt)
-        
+
         neo_tx.dosages = [trast_dosage, pert_dosage]
-    
+
     # The primary treatment (surgery) is a few days after the last scan.
     offset = _random_int(0, 10)
     surgery_date = sessions[-1].acquisition_date + timedelta(days=offset)
     primary_tx = Treatment(treatment_type='Primary', begin_date=surgery_date,
                            end_date=surgery_date)
-    
+
     # Adjuvant treatment begins shortly after surgery.
     offset = _random_int(0, 3)
     adj_tx_begin = surgery_date + timedelta(days=offset)
@@ -394,12 +437,13 @@ def _create_subject_detail(collection, subject):
     # The biopsy is a few days before the first visit.
     offset = _random_int(0, 10)
     biopsy_date = sessions[0].acquisition_date - timedelta(days=offset)
-    
+
     # Force the first breast patient to be free of lymph nodes,
     # since we want at least one patient with a normalized assay.
     opts = {}
     if isinstance(collection, Breast) and subject.number == 1:
-        opts['lymph_status'] = 0
+        opts['hormone_receptors'] = dict(estrogen=dict(positive=True))
+        opts['tnm'] = dict(lymph_status=0)
     # The biopsy has a pathology report.
     biopsy_path = collection.create_pathology(**opts)
     biopsy = Biopsy(date=biopsy_date, pathology=biopsy_path)
@@ -458,7 +502,7 @@ def _choose_gender(collection):
 
 def _create_tnm(collection, prefix=None, **opts):
     grade = collection.create_grade()
-    
+
     tumor_size_max = TNM.Size.tumor_size_choices(collection.name)[-1]
     tumor_size = _random_int(1, tumor_size_max)
     suffix_choices = TNM.Size.suffix_choices(collection.name)
@@ -472,7 +516,7 @@ def _create_tnm(collection, prefix=None, **opts):
     lymph_status = _random_int(0, lymph_status_max)
     metastasis = _random_boolean()
     invasion = _random_boolean()
-    
+
     # The value dictionary.
     values = dict(tumor_type=collection.name, grade=grade, size=size,
                   lymph_status=lymph_status, metastasis=metastasis,
@@ -503,17 +547,17 @@ def _create_session(collection, subject, session_number, reg_cfg_dict):
     arv = int(round((0.5 - random.random()) * 4)) + AVG_BOLUS_ARRIVAL_NDX
     # Make the series list.
     series = _create_all_series(collection)
-    
+
     # Make the scans.
     t1_scan = _create_t1_scan(subject, session_number, series, arv,
                               reg_cfg_dict)
     t2_scan = _create_t2_scan(subject, session_number, series, arv)
     scans = dict(t1=t1_scan, t2=t2_scan)
-    
+
     # Make the session detail.
     detail = SessionDetail(bolus_arrival_index=arv, series=series,
                            scans=scans)
-    
+
     # Save the detail, since it is not embedded.
     detail.save()
 
@@ -521,7 +565,7 @@ def _create_session(collection, subject, session_number, reg_cfg_dict):
     for reg_cfg_key, reg_cfg in reg_cfg_dict.iteritems():
         mdl_result = _create_modeling_result(subject, session_number)
         for mdl in reg_cfg.modeling.itervalues():
-          mdl.results.append(mdl_result)
+            mdl.results.append(mdl_result)
 
     return Session(number=session_number, acquisition_date=date,
                    detail=detail)
@@ -530,7 +574,7 @@ def _create_session(collection, subject, session_number, reg_cfg_dict):
 def _create_modeling_result(subject, session_number):
     # The modeling resource name.
     resource = "pk_%s" % uid.generate_string_uid()
-    
+
     # Add modeling parameters with a random offset.
     factor = 1 + ((random.random() - 0.5) * 0.4)
     fxl_k_trans_avg = FXL_K_TRANS_AVG * factor
@@ -613,7 +657,7 @@ def _create_t1_scan(subject, session_number, series, bolus_arrival_index,
 def _create_t2_scan(subject, session_number, series, bolus_arrival_index):
     files = _create_scan_filenames(subject, session_number, series, 't2')
     intensity = _create_intensity(len(series), bolus_arrival_index)
-    
+
     return Scan(scan_type='t2', files=files, intensity=intensity)
 
 
@@ -622,7 +666,7 @@ def _create_registration(subject, session_number, series, bolus_arrival_index):
     files = _create_registration_filenames(subject, session_number, resource,
                                            series)
     intensity = _create_intensity(len(series), bolus_arrival_index)
-    
+
     return Registration(resource=resource, files=files, intensity=intensity)
 
 
@@ -711,32 +755,32 @@ def splitexts(path):
     """
     Splits the given file path into a name and extension.
     Unlike ``os.path.splitext``, the resulting extension can be composite.
-    
+
     Example:
-    
+
     >>> import os
     >>> os.path.splitext('/tmp/foo.nii.gz')
     ('/tmp/foo.nii', '.gz')
     >>> from qiutil.file_helper import splitexts
     >>> splitexts('/tmp/foo.3/bar.nii.gz')
     ('/tmp/foo.3/bar', '.nii.gz')
-    
+
     This function is lifted from the ``qiutil`` project.
-    
+
     :param path: the file path
     :return: the *(prefix, extensions)* tuple
     """
     matches = SPLITEXT_PAT.match(path).groups()[:2]
     # Pad with an empty extension, if necessary.
     matches += (None,) * (2 - len(matches))
-    
+
     return tuple(matches)
 
 
 def _create_label_map(modeling_file):
     base, ext = splitexts(modeling_file)
     label_map = base + '_color' + ext
-    
+
     return LabelMap(filename=label_map, color_table=COLOR_TABLE_FILE_NAME)
 
 

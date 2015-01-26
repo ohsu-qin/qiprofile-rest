@@ -218,30 +218,31 @@ class TestSeed(object):
         
         # Breast has specialized tests.
         if subject.collection == 'Breast':
-            assert_is_not_none(path.estrogen, "%s biopsy pathology report is"
-                                              " missing an estrogen status" %
-                                              subject)
-            assert_is_not_none(path.progesterone, "%s biopsy pathology report"
-                                                  " is missing a progesterone"
-                                                  " status" % subject)
-            assert_is_not_none(path.her2_neu_ihc, "%s biopsy pathology report"
-                                                  " is missing a HER2 NEU IHC"
-                                                  " status" % subject)
-            assert_is_not_none(path.her2_neu_fish, "%s biopsy pathology report"
-                                                   " is missing a HER2 NEU FISH"
-                                                   " status" % subject)
-            assert_is_not_none(path.ki67, "%s biopsy pathology report is missing"
-                                          " a Ki67 result" % subject)
-            # HER2 positive and no lymph nodes has a normalized assay.
-            if path.estrogen.positive and not path.tnm.lymph_status:
-                assay = path.normalized_assay
-                gstm1 = _random_int(0, 15)
-                cd68 = _random_int(0, 15)
-                bag1 = _random_int(0, 15)
-                her2 = self._create_HER2_group()
-                estrogen = self._create_estrogen_group()
-                proliferation = self._create_proliferation_group()
-                invasion = self._create_invasion_group()
+            assert_is_not_none(path.hormone_receptors.estrogen,
+                               "%s biopsy pathology report is missing an"
+                               " estrogen status" % subject)
+            assert_is_not_none(path.hormone_receptors.progesterone,
+                               "%s biopsy pathology report is missing a"
+                               " progesterone status" % subject)
+            assert_is_not_none(path.genetic_expression.her2_neu_ihc,
+                               "%s biopsy pathology report is missing a"
+                               " HER2 NEU IHC status" % subject)
+            assert_is_not_none(path.genetic_expression.her2_neu_fish,
+                               "%s biopsy pathology report is missing a"
+                               " HER2 NEU FISH status" % subject)
+            assert_is_not_none(path.genetic_expression.ki67,
+                               "%s biopsy pathology report is missing a"
+                               " Ki67 status" % subject)
+            # The first breast subject has value overrides.
+            if subject.number == 1:
+                assert_true(path.hormone_receptors.estrogen.positive,
+                            "The first Breast subject is not estrogen-receptor-positive")
+                assert_equal(path.tnm.lymph_status, 0, "The first Breast subject"
+                                                       " lymph status is incorrect")
+            # A subject who is estrogen-receptor-positive and has no lymph nodes
+            # has a normalized assay.
+            if path.hormone_receptors.estrogen.positive and not path.tnm.lymph_status:
+                assay = path.genetic_expression.normalized_assay
                 assert_is_not_none(assay, "%s biopsy pathology report with HER2"
                                           " positive and no lymph nodes is missing"
                                           " a normalized assay" % subject)

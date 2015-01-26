@@ -667,13 +667,16 @@ class Pathology(Evaluation):
     tnm = fields.EmbeddedDocumentField('TNM')
 
 
-class NormalizedAssayField(fields.IntField):
-    def validate(self, value, clean=True):
-        return value > 0 and value <= 15
+class BreastReceptorStatus(mongoengine.EmbeddedDocument):
+    """The breast patient hormone receptor results."""
+    
+    estrogen = fields.EmbeddedDocumentField('HormoneReceptorStatus')
+
+    progesterone = fields.EmbeddedDocumentField('HormoneReceptorStatus')
 
 
-class BreastPathology(Pathology):
-    """The QIN breast patient pathology summary."""
+class BreastGeneticExpression(mongoengine.EmbeddedDocument):
+    """The breast patient genetic expression results."""
 
     HER2_NEU_IHC_CHOICES = [(0, '0'), (1, '1+'), (2, '2+'), (3, '3+')]
     """The HER2 NEU IHC choices are displayed as 0, 1+, 2+, 3+."""
@@ -682,55 +685,68 @@ class BreastPathology(Pathology):
         def validate(self, value, clean=True):
             return value > 0 and value <= 100
 
-    class NormalizedAssay(mongoengine.EmbeddedDocument):
-        """The Breast genomics panel normalized to reference genes."""
-
-        class HER2(mongoengine.EmbeddedDocument):
-            grb7 = NormalizedAssayField()
-            her2 = NormalizedAssayField()
-
-        class Estrogen(mongoengine.EmbeddedDocument):
-            er = NormalizedAssayField()
-            pgr = NormalizedAssayField()
-            bcl2 = NormalizedAssayField()
-            scube2 = NormalizedAssayField()
-
-        class Proliferation(mongoengine.EmbeddedDocument):
-            ki67 = NormalizedAssayField()
-            stk_15 = NormalizedAssayField()
-            survivin = NormalizedAssayField()
-            ccnb1 = NormalizedAssayField()
-            mybl2 = NormalizedAssayField()
-
-        class Invasion(mongoengine.EmbeddedDocument):
-            mmp11 = NormalizedAssayField()
-            ctsl2 = NormalizedAssayField()
-
-        gstm1 = NormalizedAssayField()
-
-        cd68 = NormalizedAssayField()
-
-        bag1 = NormalizedAssayField()
-
-        her2 = fields.EmbeddedDocumentField(HER2)
-
-        estrogen = fields.EmbeddedDocumentField(Estrogen)
-
-        proliferation = fields.EmbeddedDocumentField(Proliferation)
-
-        invasion = fields.EmbeddedDocumentField(Invasion)
-
-    estrogen = fields.EmbeddedDocumentField('HormoneReceptorStatus')
-
-    progesterone = fields.EmbeddedDocumentField('HormoneReceptorStatus')
-
     her2_neu_ihc = fields.IntField(choices=HER2_NEU_IHC_CHOICES)
 
     her2_neu_fish = fields.BooleanField(choices=choices.POS_NEG_CHOICES)
 
     ki67 = KI67Field()
 
-    normalized_assay = fields.EmbeddedDocumentField(NormalizedAssay)
+    normalized_assay = fields.EmbeddedDocumentField('NormalizedAssay')
+
+
+class BreastPathology(Pathology):
+    """The QIN breast patient pathology summary."""
+
+    hormone_receptors = fields.EmbeddedDocumentField('BreastReceptorStatus')
+
+    genetic_expression = fields.EmbeddedDocumentField('BreastGeneticExpression')
+
+
+class NormalizedAssayField(fields.IntField):
+    """The normalized Breast genomics result in the inclusive range [0, 15]."""
+
+    def validate(self, value, clean=True):
+        return value > 0 and value <= 15
+
+
+class NormalizedAssay(mongoengine.EmbeddedDocument):
+    """The Breast genomics panel normalized to reference genes."""
+
+    class HER2(mongoengine.EmbeddedDocument):
+        grb7 = NormalizedAssayField()
+        her2 = NormalizedAssayField()
+
+    class Estrogen(mongoengine.EmbeddedDocument):
+        er = NormalizedAssayField()
+        pgr = NormalizedAssayField()
+        bcl2 = NormalizedAssayField()
+        scube2 = NormalizedAssayField()
+
+    class Proliferation(mongoengine.EmbeddedDocument):
+        ki67 = NormalizedAssayField()
+        stk_15 = NormalizedAssayField()
+        survivin = NormalizedAssayField()
+        ccnb1 = NormalizedAssayField()
+        mybl2 = NormalizedAssayField()
+
+    class Invasion(mongoengine.EmbeddedDocument):
+        mmp11 = NormalizedAssayField()
+        ctsl2 = NormalizedAssayField()
+
+    gstm1 = NormalizedAssayField()
+
+    cd68 = NormalizedAssayField()
+
+    bag1 = NormalizedAssayField()
+
+    her2 = fields.EmbeddedDocumentField(HER2)
+
+    estrogen = fields.EmbeddedDocumentField(Estrogen)
+
+    proliferation = fields.EmbeddedDocumentField(Proliferation)
+
+    invasion = fields.EmbeddedDocumentField(Invasion)
+
 
 class SarcomaPathology(Pathology):
     """The QIN sarcoma patient pathology summary."""
