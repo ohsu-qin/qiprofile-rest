@@ -724,7 +724,7 @@ class NormalizedAssay(mongoengine.EmbeddedDocument):
 
     class Proliferation(mongoengine.EmbeddedDocument):
         ki67 = NormalizedAssayField()
-        stk_15 = NormalizedAssayField()
+        stk15 = NormalizedAssayField()
         survivin = NormalizedAssayField()
         ccnb1 = NormalizedAssayField()
         mybl2 = NormalizedAssayField()
