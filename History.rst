@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 (http://quip1:6060/qiprofile-rest) for change details.
 
+3.1.1 / 2015-01-29
+------------------
+* Pull SubjectDetail into Subject.
+
 2.4.1 / 2015-01-27
 ------------------
 * Add gene expression assay.
