@@ -12,8 +12,7 @@ app = Eve()
 ext = EveMongoengine(app)
 
 # Register the model non-embedded documdent classes.
-ext.add_model(models.Subject, url='subjects')
-ext.add_model(models.SubjectDetail, url='subject-detail')
+ext.add_model(models.Subject, url='subject')
 ext.add_model(models.SessionDetail, url='session-detail')
 
 
