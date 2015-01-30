@@ -47,14 +47,37 @@ class Subject(mongoengine.Document):
 
     number = fields.IntField(required=True)
 
-    detail = fields.ReferenceField('SubjectDetail')
+    birth_date = fields.DateTimeField()
 
-    @classmethod
+    races = fields.ListField(
+        fields.StringField(
+            max_length=choices.max_length(choices.RACE_CHOICES),
+            choices=choices.RACE_CHOICES))
+
+    ethnicity = fields.StringField(
+        max_length=choices.max_length(choices.ETHNICITY_CHOICES),
+        choices=choices.ETHNICITY_CHOICES)
+
+    gender = fields.StringField(
+        max_length=choices.max_length(choices.GENDER_CHOICES),
+        choices=choices.GENDER_CHOICES)
+
+    weight = fields.IntField()
+
+    # The {scan type: ScanSet} dictionary.
+    scan_sets = fields.DictField(field=fields.EmbeddedDocumentField('ScanSet'))
+
+    sessions = fields.ListField(field=fields.EmbeddedDocumentField('Session'))
+
+    treatments = fields.ListField(field=fields.EmbeddedDocumentField('Treatment'))
+
+    encounters = fields.ListField(field=fields.EmbeddedDocumentField('Encounter'))
+
     def pre_delete(cls, sender, document, **kwargs):
-        """Cascade delete this Session's detail."""
+        """Cascade delete this Subject's sessions."""
 
-        if self.detail:
-            self.detail.delete()
+        for sess in self.sessions:
+            sess.delete()
 
     def __str__(self):
         return ("%s %s Subject %d" %
@@ -205,7 +228,7 @@ class Registration(ImageContainer):
         """
         The registration technique and input parameters.
         Since the configuration binds registrations across sessions,
-        the Configuration objects are embedded in the SubjectDetail.
+        the Configuration objects are embedded in the Subject.
         """
 
         TECHNIQUE = ['ANTS', 'FNIRT']
@@ -238,46 +261,6 @@ class ScanSet(Modelable):
         field=fields.EmbeddedDocumentField(Registration.Configuration)
     )
     """The registration {key: configuration} dictionary."""
-
-
-class SubjectDetail(mongoengine.Document):
-    """
-    The patient detail aggregate. The Mongodb quiprofile_subject_detail
-    document embeds the subject sessions and outcomes.
-    """
-
-    meta = dict(collection='qiprofile_subject_detail')
-
-    # The {scan type: ScanSet} dictionary
-    scan_sets = fields.DictField(field=fields.EmbeddedDocumentField(ScanSet))
-
-    birth_date = fields.DateTimeField()
-
-    races = fields.ListField(
-        fields.StringField(max_length=choices.max_length(choices.RACE_CHOICES),
-                           choices=choices.RACE_CHOICES))
-
-    ethnicity = fields.StringField(
-        max_length=choices.max_length(choices.ETHNICITY_CHOICES),
-        choices=choices.ETHNICITY_CHOICES)
-
-    gender = fields.StringField(
-        max_length=choices.max_length(choices.GENDER_CHOICES),
-        choices=choices.GENDER_CHOICES)
-
-    weight = fields.IntField()
-
-    sessions = fields.ListField(field=fields.EmbeddedDocumentField('Session'))
-
-    treatments = fields.ListField(field=fields.EmbeddedDocumentField('Treatment'))
-
-    encounters = fields.ListField(field=fields.EmbeddedDocumentField('Encounter'))
-
-    def pre_delete(cls, sender, document, **kwargs):
-        """Cascade delete this SubjectDetail's sessions."""
-
-        for sess in self.sessions:
-            sess.delete()
 
 
 class Intensity(mongoengine.EmbeddedDocument):

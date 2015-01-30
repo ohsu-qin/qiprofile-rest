@@ -28,42 +28,42 @@ class TestModel(object):
         subject.save()
 
     def test_race(self):
-        detail = SubjectDetail(collection='Breast', number=1)
-        detail.races = ['White', 'Black', 'Asian', 'AIAN', 'NHOPI']
-        detail.save()
+        subject = Subject(collection='Breast', number=1)
+        subject.races = ['White', 'Black', 'Asian', 'AIAN', 'NHOPI']
+        subject.save()
 
-        detail = SubjectDetail(collection='Breast', number=1)
-        detail.races = ['Invalid']
+        subject = Subject(collection='Breast', number=1)
+        subject.races = ['Invalid']
         with assert_raises(ValidationError):
-            detail.save()
+            subject.save()
 
         # Races must be a list.
-        detail.races = 'White'
+        subject.races = 'White'
         with assert_raises(ValidationError):
-            detail.save()
+            subject.save()
 
     def test_ethnicity(self):
-        detail = SubjectDetail(collection='Breast', number=1)
-        detail.ethnicity = 'Non-Hispanic'
-        detail.save()
+        subject = Subject(collection='Breast', number=1)
+        subject.ethnicity = 'Non-Hispanic'
+        subject.save()
 
-        detail.ethnicity = 'Invalid'
+        subject.ethnicity = 'Invalid'
         with assert_raises(ValidationError):
-            detail.save()
+            subject.save()
 
     def test_encounter(self):
-        detail = SubjectDetail(collection='Breast', number=1)
+        subject = Subject(collection='Breast', number=1)
         date = datetime(2013, 1, 4, tzinfo=pytz.utc)
         encounter = Encounter(encounter_type='Biopsy', date=date)
-        detail.encounters = [encounter]
+        subject.encounters = [encounter]
         # The encounter outcome is optional.
-        detail.save()
+        subject.save()
         # Add the evaluation.
         evaluation = Evaluation()
         outcome = TNM()
         evaluation.outcomes = [outcome]
         encounter.evaluation = evaluation
-        detail.save()
+        subject.save()
 
     def test_tnm_size(self):
         for value in ['T1', 'Tx', 'cT4', 'T1b', 'cT2a']:
@@ -73,11 +73,11 @@ class TestModel(object):
                                            % (value, str(size)))
 
     def test_session(self):
-        detail = SubjectDetail(collection='Breast', number=1)
+        subject = Subject(collection='Breast', number=1)
         date = datetime(2013, 1, 4, tzinfo=pytz.utc)
         session = Session(number=1, acquisition_date=date)
-        detail.sessions = [session]
-        detail.save()
+        subject.sessions = [session]
+        subject.save()
 
     def test_modeling(self):
         # TODO - add modeling test case.

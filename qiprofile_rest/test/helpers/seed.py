@@ -9,7 +9,7 @@ from decimal import Decimal
 from mongoengine import connect
 from qiutil import uid
 from qiprofile_rest import choices
-from qiprofile_rest.models import (Subject, SubjectDetail, Session, SessionDetail,
+from qiprofile_rest.models import (Subject, Session, SessionDetail,
                                    Modeling, ModelingResult, ModelingParameter,
                                    LabelMap, Series, Scan, ScanSet, Registration,
                                    Intensity, Probe, Treatment, Drug, Dosage,
@@ -326,17 +326,6 @@ def _seed_subject(collection, subject_number):
     return sbj
 
 
-def _create_subject(collection, subject_number):
-    subject = Subject(number=subject_number, project=PROJECT,
-                      collection=collection.name)
-    detail = _create_subject_detail(collection, subject)
-    detail.save()
-    subject.detail = detail
-    subject.save()
-
-    return subject
-
-
 ETHNICITY_INCIDENCE = [15, 85]
 """
 The rough US ethnicity incidence for the respective ethnicity choices.
@@ -349,18 +338,22 @@ The rough US race incidence for the respective race choices.
 The incidences sum to 100.
 """
 
-def _create_subject_detail(collection, subject):
+
+def _create_subject(collection, subject_number):
+    # The subject with just a secondary key.
+    subject = Subject(project=PROJECT, collection=collection.name,
+                      number=subject_number)
     # The patient demographics.
     yr = _random_int(1950, 1980)
-    birth_date = datetime(yr, 7, 7, tzinfo=pytz.utc)
+    subject.birth_date = datetime(yr, 7, 7, tzinfo=pytz.utc)
     # Only show one race.
-    races = [_choose_race()]
+    subject.races = [_choose_race()]
     # The ethnicity is None half of the time.
-    ethnicity = _choose_ethnicity()
+    subject.ethnicity = _choose_ethnicity()
     # The gender is roughly split.
-    gender = _choose_gender(collection)
-    # The weight is 100-200.
-    weight = _random_int(100, 200)
+    subject.gender = _choose_gender(collection)
+    # The weight is between 100 and 200.
+    subject.weight = _random_int(100, 200)
 
     # Make the sessions.
     session_cnt = collection.visit_count
@@ -386,19 +379,19 @@ def _create_subject_detail(collection, subject):
     reg_cfg_dict = {reg_cfg_key: reg_cfg}
 
     # The scan sets.
-    scan_sets = dict(t1=ScanSet(registration=reg_cfg_dict),
+    subject.scan_sets = dict(t1=ScanSet(registration=reg_cfg_dict),
                      t2=ScanSet())
 
     # The sessions.
-    sessions = [_create_session(collection, subject, sess_nbr, reg_cfg_dict)
+    subject.sessions = [_create_session(collection, subject, sess_nbr, reg_cfg_dict)
                 for sess_nbr in range(1, session_cnt + 1)]
 
     # The neodjuvant treatment starts a few days after the first visit.
     offset = _random_int(0, 3)
-    neo_tx_begin = sessions[0].acquisition_date + timedelta(days=offset)
+    neo_tx_begin = subject.sessions[0].acquisition_date + timedelta(days=offset)
     # The neodjuvant treatment ends a few days before the last visit.
     offset = _random_int(0, 3)
-    neo_tx_end = sessions[-1].acquisition_date - timedelta(days=offset)
+    neo_tx_end = subject.sessions[-1].acquisition_date - timedelta(days=offset)
     neo_tx = Treatment(treatment_type='Neoadjuvant', begin_date=neo_tx_begin,
                        end_date=neo_tx_end)
 
@@ -420,7 +413,7 @@ def _create_subject_detail(collection, subject):
 
     # The primary treatment (surgery) is a few days after the last scan.
     offset = _random_int(0, 10)
-    surgery_date = sessions[-1].acquisition_date + timedelta(days=offset)
+    surgery_date = subject.sessions[-1].acquisition_date + timedelta(days=offset)
     primary_tx = Treatment(treatment_type='Primary', begin_date=surgery_date,
                            end_date=surgery_date)
 
@@ -432,11 +425,13 @@ def _create_subject_detail(collection, subject):
     adj_tx_end = adj_tx_begin + timedelta(days=offset)
     adj_tx = Treatment(treatment_type='Adjuvant', begin_date=adj_tx_begin,
                        end_date=adj_tx_end)
-    treatments = [neo_tx, primary_tx, adj_tx]
+    
+    # Add the treatments.
+    subject.treatments = [neo_tx, primary_tx, adj_tx]
 
     # The biopsy is a few days before the first visit.
     offset = _random_int(0, 10)
-    biopsy_date = sessions[0].acquisition_date - timedelta(days=offset)
+    biopsy_date = subject.sessions[0].acquisition_date - timedelta(days=offset)
 
     # Force the first breast patient to be free of lymph nodes,
     # since we want at least one patient with a normalized assay.
@@ -458,13 +453,14 @@ def _create_subject_detail(collection, subject):
     assessment_tnm = _create_tnm(collection)
     evaluation = GenericEvaluation(outcomes=[assessment_tnm])
     assessment = Assessment(date=assessment_date, evaluation=evaluation)
-    encounters = [biopsy, surgery, assessment]
+    
+    # Add the encounters.
+    subject.encounters = [biopsy, surgery, assessment]
 
-    # Make the subject detail.
-    return SubjectDetail(birth_date=birth_date, races=races, gender=gender,
-                         weight=weight, ethnicity=ethnicity,
-                         encounters=encounters, treatments=treatments,
-                         sessions=sessions, scan_sets=scan_sets)
+    # Save the subject.
+    subject.save()
+    
+    return subject
 
 
 def _choose_race():

@@ -40,11 +40,10 @@ class TestSeed(object):
         collections = ((coll.name for coll in seed.COLLECTIONS))
         assert_in(subject.collection, collections,
                   "Collection is invalid: %s" % subject.collection)
-        assert_is_not_none(subject.detail, "%s is missing detail" % subject)
-        assert_is_not_none(subject.detail.gender, "%s is missing gender" % subject)
-        assert_is_not_none(subject.detail.weight, "%s is missing weight" % subject)
-        assert_is_not_none(subject.detail.sessions, "%s has no sessions" % subject)
-        sessions = subject.detail.sessions
+        assert_is_not_none(subject.gender, "%s is missing gender" % subject)
+        assert_is_not_none(subject.weight, "%s is missing weight" % subject)
+        assert_is_not_none(subject.sessions, "%s has no sessions" % subject)
+        sessions = subject.sessions
         session_cnt = TestSeed.SESSION_CNT[subject.collection]
         assert_equal(len(sessions), session_cnt, "%s session count is incorrect: %d" %
                                   (subject, len(sessions)))
@@ -52,7 +51,7 @@ class TestSeed(object):
             self._validate_session(subject, session)
         
         # There are scan sets.
-        scan_sets = subject.detail.scan_sets
+        scan_sets = subject.scan_sets
         assert_is_not_none(scan_sets, "%s Subject %s is missing scan sets" %
                                        (subject.collection, subject.number))
         assert_equal(set(scan_sets.keys()), set(['t1', 't2']),
@@ -162,7 +161,7 @@ class TestSeed(object):
                                            (subject.collection, subject.number))
 
         # There are three treatments.
-        treatments = subject.detail.treatments
+        treatments = subject.treatments
         assert_equal(len(treatments), 3,
                      "%s Subject %d treatments count is incorrect: %d" %
                      (subject.collection, subject.number, len(treatments)))
@@ -200,7 +199,7 @@ class TestSeed(object):
                 assert_equal(per_unit.scale, 'k', ("%s Subject %d neodjuvant drug per unit scale" +
                                              " is not kilogram") % ((subject.collection, subject.number)))
 
-        encounters = subject.detail.encounters
+        encounters = subject.encounters
         assert_equal(len(encounters), 3,
                      "%s Subject %d encounter count is incorrect: %d" %
                      (subject.collection, subject.number, len(encounters)))
