@@ -33,7 +33,7 @@ setup(
     packages = find_packages(),
     include_package_data = True,
     scripts = glob.glob('bin/*'),
-    url = 'http://quip1.ohsu.edu/8080/qiprofile-rest',
+    url = 'http://qiprofile-rest.readthedocs.org/en/latest/',
     description = 'qiprofile-rest is the REST API for the Imaging Profile web application.',
     long_description = readme(),
     classifiers = [
