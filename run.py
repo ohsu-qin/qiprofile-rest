@@ -3,7 +3,8 @@ import importlib
 import mongoengine
 from eve import Eve
 from eve_mongoengine import EveMongoengine
-from qiprofile_rest import models
+from qiprofile_rest.model.subject import Subject
+from qiprofile_rest.model.imaging import SessionDetail
 
 # The application. 
 app = Eve()
@@ -12,8 +13,8 @@ app = Eve()
 ext = EveMongoengine(app)
 
 # Register the model non-embedded documdent classes.
-ext.add_model(models.Subject, url='subject')
-ext.add_model(models.SessionDetail, url='session-detail')
+ext.add_model(Subject, url='subject')
+ext.add_model(SessionDetail, url='session-detail')
 
 
 if __name__ == '__main__':

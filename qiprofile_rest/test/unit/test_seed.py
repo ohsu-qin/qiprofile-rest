@@ -3,8 +3,9 @@ from nose.tools import (assert_is_none, assert_is_instance, assert_in,
 from datetime import datetime
 from mongoengine import connect
 from mongoengine.connection import get_db
-from qiprofile_rest.models import (Subject, Assessment, Biopsy, Surgery,
-                                   Drug, Weight)
+from qiprofile_rest.model.subject import Subject
+from qiprofile_rest.model.uom import Weight
+from qiprofile_rest.model.clinical import (Assessment, Biopsy, Surgery, Drug)
 from qiprofile_rest.test.helpers import seed
 
 class TestSeed(object):
