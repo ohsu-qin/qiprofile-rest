@@ -3,11 +3,13 @@
 import os
 import re
 from qiutil.logging import logger
-from .models import (Project, Collection, Subject, Session, Modeling)
+from .model.subject import Subject
+from .model.imaging import (Session, Modeling)
 
 SBJ_REGEX = re.compile('^(\w+?)(\d+)$')
 
 SESS_REGEX = re.compile('^Session(\d+)$')
+
 
 def find_subject(project, subject, create=False):
     """
@@ -30,14 +32,13 @@ def find_subject(project, subject, create=False):
                                   number=sbj_nbr)
     except Subject.DoesNotExist:
         if create:
-            prj = Project.objects.get(name=project)
-            coll = Collection.objects.get(name=collection)
-            sbj = Subject(project=prj, collection=coll, number=sbj_nbr)
+            sbj = Subject(project=project, collection=collection, number=sbj_nbr)
             sbj.save()
         else:
             return
 
     return sbj
+
 
 def find_session(project, subject, session, create=False):
     """
@@ -69,6 +70,7 @@ def find_session(project, subject, session, create=False):
 
     return sess
 
+
 def save_subject(project, subject, **opts):
     """
     Creates the QuIP subject, if necessary, and updates
@@ -85,9 +87,7 @@ def save_subject(project, subject, **opts):
     sbj_nbr = int(sbj_nbr_str)
 
     # Make the subject.
-    prj = Project.objects.get(name=project)
-    coll = Collection.objects.get(name=collection)
-    sbj = Subject(project=prj, collection=coll, number=sbj_nbr)
+    sbj = Subject(project=project, collection=collection, number=sbj_nbr)
     for attr, value in opts.iteritems():
         setattr(sbj, attr, value)
 
@@ -95,6 +95,7 @@ def save_subject(project, subject, **opts):
     logger(__name__).debug("Saving %s Subject %s..." % (project, subject))
     sbj.save()
     logger(__name__).debug("Saved %s Subject %s." % (project, subject))
+
 
 def save_session(project, subject, session, **opts):
     """
@@ -121,6 +122,7 @@ def save_session(project, subject, session, **opts):
     sess.save()
     logger(__name__).debug("Saved %s Subject %s Session %s." %
                            (project, subject, session))
+
 
 def save_modeling(project, subject, session, assessor, **opts):
     """
