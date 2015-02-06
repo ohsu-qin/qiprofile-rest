@@ -1,18 +1,6 @@
-POS_NEG_CHOICES = [(True, 'Positive'), (False, 'Negative')]
-"""The Boolean choices for Positive or Negative status."""
-
-RACE_CHOICES = [('White', 'White'),
-                ('Black', 'Black or African American'),
-                ('Asian', 'Asian'),
-                ('AIAN', 'American Indian or Alaska Native'),
-                ('NHOPI', 'Native Hawaiian or Other Pacific Islander')]
-"""The standard FDA race categories, in order of US incidence."""
-
-ETHNICITY_CHOICES = [('Hispanic' , 'Hispanic or Latino'),
-                     ('Non-Hispanic' , 'Not Hispanic or Latino')]
-"""The standard FDA ethnicity categories."""
-
-GENDER_CHOICES = [('Male', 'Male'), ('Female', 'Female')]
+"""
+Choice utility functions.
+"""
 
 def max_length(choices):
     """
@@ -35,7 +23,8 @@ def roman_range_choices(start, stop):
     """
     Returns the (arabic number, roman numeral) choice tuples
     for the given exclusive range bounds. This is useful, e.g.,
-    for displaying the tumor stage.
+    for displaying the tumor stage. (Yes, this is the 21st
+    century).
      
     Example:
 
