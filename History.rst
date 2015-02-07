@@ -1,6 +1,14 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+3.1.3 / 2015-02-06
+------------------
+* Add API documentation.
+
+3.1.2 / 2015-02-06
+------------------
+* Refactor models into separate modules.
+
 3.1.1 / 2015-01-29
 ------------------
 * Pull SubjectDetail into Subject.
