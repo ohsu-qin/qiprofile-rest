@@ -17,11 +17,7 @@ class TestModel(object):
       self.db.connection.drop_database('qiprofile_test')
 
     def test_subject(self):
-        subject = Subject(number=1)
-        assert_equal(subject.project, 'QIN',
-                     "Subject project is not set to the default -"
-                     " expected %s, found %s" % ('QIN', subject.project))
-        
+        subject = Subject(project='QIN_Test', number=1)
         # The subject must have a collection.
         with assert_raises(ValidationError):
             subject.save()
@@ -30,11 +26,11 @@ class TestModel(object):
         subject.save()
 
     def test_race(self):
-        subject = Subject(collection='Breast', number=1)
+        subject = Subject(project='QIN_Test', collection='Breast', number=1)
         subject.races = ['White', 'Black', 'Asian', 'AIAN', 'NHOPI']
         subject.save()
 
-        subject = Subject(collection='Breast', number=1)
+        subject = Subject(project='QIN_Test', collection='Breast', number=1)
         subject.races = ['Invalid']
         with assert_raises(ValidationError):
             subject.save()
@@ -45,7 +41,7 @@ class TestModel(object):
             subject.save()
 
     def test_ethnicity(self):
-        subject = Subject(collection='Breast', number=1)
+        subject = Subject(project='QIN_Test', collection='Breast', number=1)
         subject.ethnicity = 'Non-Hispanic'
         subject.save()
 
@@ -54,7 +50,7 @@ class TestModel(object):
             subject.save()
 
     def test_encounter(self):
-        subject = Subject(collection='Breast', number=1)
+        subject = Subject(project='QIN_Test', collection='Breast', number=1)
         date = datetime(2013, 1, 4, tzinfo=pytz.utc)
         encounter = Encounter(encounter_type='Biopsy', date=date)
         subject.encounters = [encounter]
@@ -75,7 +71,7 @@ class TestModel(object):
                                            % (value, str(size)))
 
     def test_session(self):
-        subject = Subject(collection='Breast', number=1)
+        subject = Subject(project='QIN_Test', collection='Breast', number=1)
         date = datetime(2013, 1, 4, tzinfo=pytz.utc)
         session = Session(number=1, acquisition_date=date)
         subject.sessions = [session]
