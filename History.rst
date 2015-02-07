@@ -1,7 +1,7 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
-3.1.3 / 2015-02-06
+3.2.1 / 2015-02-06
 ------------------
 * Add API documentation.
 
