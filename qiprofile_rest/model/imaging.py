@@ -62,13 +62,10 @@ class ImageContainer(mongoengine.EmbeddedDocument):
 class Scan(ImageContainer):
     """The patient image scan."""
 
-    SCAN_TYPES = ['t1', 't2']
-
-    scan_type = fields.StringField(
-        choices=SCAN_TYPES,
-        max_length=choices.max_length(SCAN_TYPES),
-        required=True
-    )
+    scan_type = fields.StringField(required=True)
+    """
+    The scan type, e.g. ``T1 SPIN ECHO``.
+    """
 
     registration = fields.DictField(
         field=mongoengine.EmbeddedDocumentField('Registration')
@@ -176,7 +173,7 @@ class ScanSet(Modelable):
     A consistent set of scans for a given scan type. This is the concrete
     subclass of the abstract Modelable class for scans.
 
-    Note: The subject holds a {scan type: scan set} dictionary. Therefore, it
+    :Note: The subject holds a {scan type: scan set} dictionary. Therefore, it
     is unnecessary to redundantly have a scan type field in this ScanSet class.
     """
 

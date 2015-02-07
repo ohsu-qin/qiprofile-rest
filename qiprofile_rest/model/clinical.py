@@ -270,7 +270,7 @@ class TNM(Outcome):
     an overview. See http://en.wikipedia.org/wiki/TNM_staging_system and
     http://cancerstaging.blogspot.com/ for the value definition.
 
-    Note:: The size and lymph_status choices can be further constrained by
+    :Note: The size and lymph_status choices can be further constrained by
         tumor type. Since :class:`TNM` is a generic class, these constraints
         are not enforced in this TNM class. Rather, the REST client is
         responsible for enforcing additional choice constraints. The
@@ -282,7 +282,7 @@ class TNM(Outcome):
         """
         The TNM primary tumor size field.
 
-        Note:: The size score choices can be further constrained by tumor
+        :Note: The size score choices can be further constrained by tumor
             type. For example, the sarcoma tumor_size choices are 0, 1 or 2
             and suffix choices are ``a`` or ``b``. See :class:`TNM` for a
             discussion of choice constraints. The :meth:`TNM.Size.tumor_size_choices`
