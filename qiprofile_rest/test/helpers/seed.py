@@ -381,8 +381,9 @@ def _create_subject(collection, subject_number):
     reg_cfg_dict = {reg_cfg_key: reg_cfg}
 
     # The scan sets.
-    subject.scan_sets = dict(t1=ScanSet(registration=reg_cfg_dict),
-                     t2=ScanSet())
+    t1 = ScanSet(scan_type='T1', registration=reg_cfg_dict)
+    t2 = ScanSet(scan_type='T2')
+    subject.scan_sets = dict(t1=t1, t2=t2)
 
     # The sessions.
     subject.sessions = [_create_session(collection, subject, sess_nbr, reg_cfg_dict)

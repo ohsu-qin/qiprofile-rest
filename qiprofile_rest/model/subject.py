@@ -56,9 +56,9 @@ class Subject(mongoengine.Document):
 
     scan_sets = fields.DictField(field=fields.EmbeddedDocumentField(ScanSet))
     """
-    The {scan type: ScanSet} dictionary. The key is the lower-case
-    underscored representation of the correspondign Scan *scan_type*
-    value.
+    The {key: ScanSet} dictionary. The key is the lower-case
+    underscored representation of the corresponding
+    :meth:`qiprofile_rest.model.imaging.ScanSet.scan_type` value.
     """
     sessions = fields.ListField(field=fields.EmbeddedDocumentField(Session))
 

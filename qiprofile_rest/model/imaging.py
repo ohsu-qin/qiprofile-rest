@@ -62,11 +62,6 @@ class ImageContainer(mongoengine.EmbeddedDocument):
 class Scan(ImageContainer):
     """The patient image scan."""
 
-    scan_type = fields.StringField(required=True)
-    """
-    The scan type, e.g. ``T1 SPIN ECHO``.
-    """
-
     registration = fields.DictField(
         field=mongoengine.EmbeddedDocumentField('Registration')
     )
@@ -172,9 +167,22 @@ class ScanSet(Modelable):
     """
     A consistent set of scans for a given scan type. This is the concrete
     subclass of the abstract Modelable class for scans.
+    """
 
-    :Note: The subject holds a {scan type: scan set} dictionary. Therefore, it
-    is unnecessary to redundantly have a scan type field in this ScanSet class.
+    scan_type = fields.StringField(required=True)
+    """
+    The simple, displayable scan type designation, e.g. ``T1``.
+
+    :Note: The :class:`qiprofile_rest.model.subject.Subject` holds a
+      {scan type: scan set} dictionary, where the key is the lower-case,
+      underscore representation of the corresponding scan_type value.
+    """
+    
+    description = fields.StringField()
+    """
+    The image acquisition scan description, e.g. 'T1 SPIN ECHO'.
+    This field is customarily specified as the DICOM Series Description
+    or Protocol Name tag.
     """
 
     registration = fields.DictField(
@@ -212,7 +220,11 @@ class SessionDetail(mongoengine.Document):
     volumes = fields.ListField(field=mongoengine.EmbeddedDocumentField(Volume))
 
     scans = fields.DictField(field=mongoengine.EmbeddedDocumentField(Scan))
-    """The scan {name: object} dictionary."""
+    """
+    The {scan type: Scan} dictionary, where the key is the lower-case,
+    underscore representation of the
+    :meth:`qiprofile_rest.model.ScanSet.scan_type` value.
+    """
 
     def clean(self):
         arv = self.bolus_arrival_index
