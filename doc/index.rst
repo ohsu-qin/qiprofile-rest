@@ -1,14 +1,14 @@
-=====================================================
-qiprofile-rest: Quantitative Imaging Profile REST API
-=====================================================
+========================================================
+qiprofile-rest: Quantitative Imaging Profile REST server
+========================================================
 
 ********
 Synopsis
 ********
-The Quantitative Imaging Profile REST API serves data for the
-`Quantitative Imaging Profile`_ web application.
+The Quantitative Imaging Profile REST server serves data for the
+QuIP_ (antitative Imaging Profile) web application.
 
-:API: https://readthedocs.org/projects/qiprofile-rest/
+:API: https://readthedocs.org/projects/qiprofile-rest/api/index.html
 
 :Git: https://github.com/ohsu-qin/qiprofile-rest
 
@@ -60,7 +60,7 @@ Usage
 
 .. _Python: http://www.python.org
 
-.. _Quantitative Imaging Profile: https://github.com/ohsu-qin/qiprofile
+.. _QuIP: https://github.com/ohsu-qin/qiprofile
 
 .. toctree::
   :hidden:
