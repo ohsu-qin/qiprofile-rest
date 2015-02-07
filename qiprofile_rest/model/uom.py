@@ -25,27 +25,27 @@ class Measurement(mongoengine.EmbeddedDocument):
         Measurement(amount=Decimal(0.006), unit=Weight())
 
     :Note: the client is responsible for saving the measurement amount
-    in unscaled units and converting the database amount to the preferred
-    unit. For example, 40mg is saved as follows::
+      in unscaled units and converting the database amount to the preferred
+      unit. For example, 40mg is saved as follows::
 
-        Measurement(amount=0.04, unit=Volume())
+          Measurement(amount=0.04, unit=Volume())
 
-    which is equivalent to::
+      which is equivalent to::
 
-        Measurement(amount=0.04, unit=Volume(scale='m'))
+          Measurement(amount=0.04, unit=Volume(scale='m'))
 
-    When this measurement is read from the database, the client then
-    converts the measurement to the preferred display value ``40mg``.
+      When this measurement is read from the database, the client then
+      converts the measurement to the preferred display value ``40mg``.
 
-    The measurement unit can be qualified by a second ``per_unit``
-    dimension, e.g. 2 mg/kg dosage per patient weight is expressed
-    as::
+      The measurement unit can be qualified by a second ``per_unit``
+      dimension, e.g. 2 mg/kg dosage per patient weight is expressed
+      as::
 
-        Measurement(amount=0.002, unit=Weight(), per_unit=Weight(scale='k'))
+          Measurement(amount=0.002, unit=Weight(), per_unit=Weight(scale='k'))
 
     :Note: the amount is a :class:`Decimal` embedded object rather than
-    the broken MongoEngine ``DecimalField`` (see the :class:`Decimal`
-    comment).
+      the broken MongoEngine ``DecimalField`` (see the :class:`Decimal`
+      comment).
     """
 
     def __init__(self, *args, **kwargs):

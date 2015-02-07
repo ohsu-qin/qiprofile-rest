@@ -30,7 +30,7 @@ class Subject(mongoengine.Document):
 
     meta = dict(collection='qiprofile_subject')
 
-    project = fields.StringField(default='QIN')
+    project = fields.StringField(required=True)
 
     collection = fields.StringField(required=True)
 
@@ -51,12 +51,15 @@ class Subject(mongoengine.Document):
         max_length=choices.max_length(GENDER_CHOICES),
         choices=GENDER_CHOICES)
 
-    # The weight in kilograms.
     weight = fields.IntField()
+    """The weight in kilograms."""
 
-    # The {scan type: ScanSet} dictionary.
     scan_sets = fields.DictField(field=fields.EmbeddedDocumentField(ScanSet))
-
+    """
+    The {scan type: ScanSet} dictionary. The key is the lower-case
+    underscored representation of the correspondign Scan *scan_type*
+    value.
+    """
     sessions = fields.ListField(field=fields.EmbeddedDocumentField(Session))
 
     treatments = fields.ListField(field=fields.EmbeddedDocumentField(Treatment))
