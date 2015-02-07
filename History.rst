@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+3.2.2 / 2015-02-06
+------------------
+* Distinguish the ScanSet scan_type and description.
+
 3.2.1 / 2015-02-06
 ------------------
 * Add API documentation.
