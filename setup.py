@@ -14,10 +14,8 @@ def version(package):
     
 
 def requires():
-    valid_re = re.compile('[-\w]+(==[-\w.]+)?$')
     with open('requirements.txt') as f:
-      entries = f.read().splitlines()
-    return [entry for entry in entries if valid_re.match(entry)]
+      return f.read().splitlines()
 
 
 def readme():

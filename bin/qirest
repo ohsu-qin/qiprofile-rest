@@ -1,18 +1,12 @@
 #!/usr/bin/env python
 """
-qirest
-
 Starts the Quantitaive Imaging Profile REST server.
 """
 
 import sys
 import os
 import argparse
-from subprocess import (Popen, PIPE, STDOUT)
-
-APP = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'run.py'))
-"""The Python script to run."""
-
+from qiprofile_rest.server.spawn import spawn
 
 def main(argv=sys.argv):
     # Parse the command line arguments.
@@ -23,21 +17,8 @@ def main(argv=sys.argv):
     if env:
       os.environ['NODE_ENV'] = env
 
-    # Start the server.
-    # The cumbersome but apparently necessary idiom below is required to continuously
-    # pipe the server output to the console
-    # (cf. http://stackoverflow.com/questions/4417546/constantly-print-subprocess-output-while-process-is-running).
-    proc = Popen([APP], stdout=PIPE, stderr=STDOUT)
-    while True:
-        line = proc.stdout.readline()
-        if line == '' and proc.poll() != None:
-            break
-        sys.stdout.write(line)
-        sys.stdout.flush()
-    out, _ = proc.communicate()
-    rc = proc.returncode
-    
-    return rc
+    # Delegate to spawn to run the server.
+    return spawn()
 
 
 def _parse_arguments():
