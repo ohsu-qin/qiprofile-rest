@@ -54,11 +54,11 @@ class Subject(mongoengine.Document):
     weight = fields.IntField()
     """The weight in kilograms."""
 
-    scan_sets = fields.DictField(field=fields.EmbeddedDocumentField(ScanSet))
+    scans = fields.DictField(field=fields.EmbeddedDocumentField(Scan))
     """
-    The {key: ScanSet} dictionary. The key is the lower-case
+    The {key: Scan} dictionary. The key is the lower-case
     underscored representation of the corresponding
-    :meth:`qiprofile_rest.model.imaging.ScanSet.scan_type` value.
+    :meth:`qiprofile_rest.model.imaging.Scan.name` value.
     """
     sessions = fields.ListField(field=fields.EmbeddedDocumentField(Session))
 

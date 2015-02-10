@@ -28,10 +28,85 @@ class Session(mongoengine.EmbeddedDocument):
 signals.pre_delete.connect(Session.pre_delete, sender=Session)
 
 
-class Volume(mongoengine.EmbeddedDocument):
-    """The MR volume."""
+class VoxelSize(mongoengine.EmbeddedDocument):
+    """The voxel width, depth and spacing."""
+    
+    width = fields.FloatField()
+    """
+    The voxel width (= voxel length) in millimeters. For an MR,
+    the width is the DICOM Pixel Spacing value.
+    """
+    
+    depth = fields.FloatField()
+    """
+    The voxel depth in millimeters. For an MR, the depth is the
+    DICOM Slice Thickness.
+    """
+    
+    spacing = fields.FloatField()
+    """The inter-slice spacing in millimeters. For an MR, the spacing
+    is the DICOM Spacing Between Slices.
+    """
 
-    number = fields.IntField(required=True)
+
+class Point(mongoengine.EmbeddedDocument):
+    """3D point in volume voxel space."""
+    
+    x = fields.IntField()
+    """
+    The horizontal dimension coordinate in the plane perpendicular
+    to the slice depth dimension.
+    """
+    
+    y = fields.IntField()
+    """
+    The vertical dimension coordinate in the plane perpendicular
+    to the slice depth dimension.
+    """
+    
+    z = fields.IntField()
+    """
+    The slice depth dimension.
+    """
+
+
+class LineSegment(mongoengine.EmbeddedDocument):
+    """The (begin, end) points of a line segment in volume voxel space."""
+    
+    begin = fields.EmbeddedDocumentField('Point')
+    
+    end = fields.EmbeddedDocumentField('Point')
+
+
+class Region(mongoengine.EmbeddedDocument):
+    """The 3D region in volume voxel space."""
+
+    mask = fields.StringField()
+    """The binary mask file name."""
+    
+    length_segment = fields.EmbeddedDocumentField(LineSegment)
+    """The region segment with maximal x difference."""
+    
+    width_segment = fields.EmbeddedDocumentField(LineSegment)
+    """The region segment with maximal y difference."""
+    
+    depth_segment = fields.EmbeddedDocumentField(LineSegment)
+    """The region segment with maximal z difference."""
+        
+    centroid = mongoengine.EmbeddedDocumentField(Point)
+    """The region centroid."""
+
+    centroid_intensity = fields.FloatField()
+    """The signal intensity at the centroid."""
+
+
+class Volume(mongoengine.EmbeddedDocument):
+
+    filename = fields.ListField(field=fields.StringField())
+    """The image file pathname relative to the web app root."""
+
+    average_intensity = field=fields.FloatField()
+    """The image signal intensity over the entire volume."""
 
 
 class LabelMap(mongoengine.EmbeddedDocument):
@@ -42,33 +117,6 @@ class LabelMap(mongoengine.EmbeddedDocument):
 
     color_table = fields.StringField()
     """The color map lookup table file path relative to the web app root."""
-
-
-class ImageContainer(mongoengine.EmbeddedDocument):
-    """
-    The patient scan or registration.
-    """
-
-    meta = dict(allow_inheritance=True)
-
-    files = fields.ListField(field=fields.StringField())
-    """The image file pathnames relative to the web app root."""
-
-    # TODO - is there a use case for several intensity measures
-    # per container?
-    intensity = fields.EmbeddedDocumentField('Intensity')
-
-
-class Scan(ImageContainer):
-    """The patient image scan."""
-
-    registration = fields.DictField(
-        field=mongoengine.EmbeddedDocumentField('Registration')
-    )
-    """
-    The {key: registration} dictionary, where *key* is the
-    subject registration configuration dictionary key.
-    """
 
 
 class Modeling(mongoengine.EmbeddedDocument):
@@ -122,30 +170,39 @@ class ModelingParameter(mongoengine.EmbeddedDocument):
     label_map = fields.EmbeddedDocumentField('LabelMap')
 
 
-class Modelable(mongoengine.EmbeddedDocument):
+class ImageSequence(mongoengine.EmbeddedDocument):
+    """
+    The scan or registration image volume container.
+    """
 
     meta = dict(allow_inheritance=True)
+    
+    volumes = fields.ListField(field=mongoengine.EmbeddedDocumentField(Volume))
+    """
+    The images in the sequence.
+    """
+    
+    roi = fields.EmbeddedDocumentField('Region')
+    
+    voxel_size = fields.EmbeddedDocumentField(VoxelSize)
+    """The voxel size in millimeters."""
 
     modeling = fields.DictField(field=fields.EmbeddedDocumentField('Modeling'))
     """
-    PK modeling performed on subject scans grouped by type or registrations
-    grouped by registration configuration.
+    PK modeling performed on the image sequence.
     """
 
 
-class Registration(ImageContainer):
+class Registration(ImageSequence):
     """
-    The patient image registration that results from processing
-    the image scan.
+    The patient image registration that results from processing a scan.
     """
-
-    class Configuration(Modelable):
+    
+    class Protocol(mongoengine.EmbeddedDocument):
         """
-        The registration technique and input parameters.
-        Since the configuration binds registrations across sessions,
-        the Configuration objects are embedded in the Subject.
+        The registration settings.
         """
-
+    
         TECHNIQUE = ['ANTS', 'FNIRT']
 
         technique = fields.StringField(
@@ -158,56 +215,40 @@ class Registration(ImageContainer):
         parameters = fields.DictField()
         """The registration input parameters."""
 
-
     resource = fields.StringField(required=True)
     """The registration XNAT resource name, e.g. ``reg_k3RtZ``."""
 
 
-class ScanSet(Modelable):
-    """
-    A consistent set of scans for a given scan type. This is the concrete
-    subclass of the abstract Modelable class for scans.
-    """
+class Scan(ImageSequence):
+    class Protocol(mongoengine.EmbeddedDocument):
+        """
+        A consistent set of scans for a given scan type. This is the concrete
+        subclass of the abstract :class:`ImageSequence` class for scans.
+        """
 
-    scan_type = fields.StringField(required=True)
-    """
-    The simple, displayable scan type designation, e.g. ``T1``.
+        scan_type = fields.StringField(required=True)
+        """
+        The scan type designation, e.g. ``T1``. This is represented in
+        XNAT by the Scan *type* attribute.
 
-    :Note: The :class:`qiprofile_rest.model.subject.Subject` holds a
-      {scan type: scan set} dictionary, where the key is the lower-case,
-      underscore representation of the corresponding scan_type value.
-    """
+        :Note: The :class:`qiprofile_rest.model.subject.Subject` holds a
+          {scan type: scan set} dictionary, where the key is the lower-case,
+          underscore representation of the corresponding scan type.
+        """
     
-    description = fields.StringField()
-    """
-    The image acquisition scan description, e.g. 'T1 SPIN ECHO'.
-    This field is customarily specified as the DICOM Series Description
-    or Protocol Name tag.
-    """
+        description = fields.StringField()
+        """
+        The image acquisition scan description, e.g. 'T1 SPIN ECHO'.
+        This field is customarily specified as the DICOM Series Description
+        or Protocol Name tag.
+        """
 
-    registration = fields.DictField(
-        field=fields.EmbeddedDocumentField(Registration.Configuration)
+    registration = fields.ListField(
+        field=fields.EmbeddedDocumentField(Registration.Protocol)
     )
-    """The registration {key: configuration} dictionary."""
-
-
-class Intensity(mongoengine.EmbeddedDocument):
-    """The image signal intensities for a given probe."""
-
-    probe = fields.EmbeddedDocumentField('Probe')
-
-    intensities = fields.ListField(field=fields.FloatField())
-    """The list of volume intensities."""
-
-
-class Probe(mongoengine.EmbeddedDocument):
-    """The image probe to conduct a measurement."""
-
-    description = fields.StringField()
-    """The short description, e.g. ``ROI centroid``"""
-
-    location = fields.ListField(field=fields.FloatField())
-    """The (x, y, z) probe coordinates"""
+    """
+    The registrations performed on the scan.
+    """
 
 
 class SessionDetail(mongoengine.Document):
@@ -216,8 +257,6 @@ class SessionDetail(mongoengine.Document):
     meta = dict(collection='qiprofile_session_detail')
 
     bolus_arrival_index = fields.IntField()
-
-    volumes = fields.ListField(field=mongoengine.EmbeddedDocumentField(Volume))
 
     scans = fields.DictField(field=mongoengine.EmbeddedDocumentField(Scan))
     """

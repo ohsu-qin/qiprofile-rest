@@ -8,6 +8,7 @@ import math
 from decimal import Decimal
 from mongoengine import connect
 from qiutil import uid
+from qiutil.file import splitexts
 from qiprofile_rest import choices
 from qiprofile_rest.model.subject import Subject
 from qiprofile_rest.model.imaging import (Session, SessionDetail,
@@ -26,25 +27,23 @@ from qiprofile_rest.model.clinical import (Treatment, Drug, Dosage, Biopsy,
 PROJECT = 'QIN_Test'
 
 class Collection(object):
-    def __init__(self, name, visit_count, volume_numbers):
+    def __init__(self, name, visit_count, volume_count):
         self.name = name
         self.visit_count = visit_count
-        self.volume_numbers = volume_numbers
+        self.volume_count = volume_count
 
 
 class Breast(Collection):
-    SERIES_NUMBERS = [7, 8] + [11 + 2*n for n in range(0, 30)]
     """
-    The  Breast volume numbers are 7, 8, 11, 13, ..., 69.
-    There are 32 AIRC Breast scans.
+    The test Breast collection has four visits with 32 volumes each.
     """
     def __init__(self):
         super(Breast, self).__init__(name='Breast', visit_count=4,
-                                     volume_numbers=Breast.SERIES_NUMBERS)
+                                     volume_count=32)
 
     def create_grade(self):
         """
-        @return the ModifiedBloomRichardson grade
+        :return: the ModifiedBloomRichardson grade
         """
         tubular_formation = _random_int(1, 3)
         nuclear_pleomorphism = _random_int(1, 3)
@@ -171,21 +170,19 @@ class Breast(Collection):
 
 
 class Sarcoma(Collection):
-    SERIES_NUMBERS = [9, 10] + [13 + 2*n for n in range(0, 38)]
     """
-    The Sarcoma volume numbers are 9, 10, 13, 15, ..., 87.
-    There are 40 AIRC Sarcoma001 Session01 volume.
+    The test Sarcoma collection has three visits with 40 volumes each.
 
     Note: the AIRC Sarcoma scan count and numbering scheme varies.
     """
 
     def __init__(self):
         super(Sarcoma, self).__init__(name='Sarcoma', visit_count=3,
-                                     volume_numbers=Sarcoma.SERIES_NUMBERS)
+                                      volume_count=40)
 
     def create_grade(self):
         """
-        @return the FNCLCC grade
+        :return: the FNCLCC grade
         """
         differentiation = _random_int(1, 3)
         mitotic_count = _random_int(1, 3)
@@ -261,17 +258,19 @@ REG_PARAMS = dict(
     transform_parameters='[(0.1,), (0.1,), (0.1, 3, 0)]'
 )
 
+# The modeling input parameters.
+MODELING_INPUT_PARAMS = dict(r1_0_val=0.7, baseline_end_idx=1)
+
 
 def seed():
     """
     Populates the MongoDB database named ``qiprofile_test`` with
     three subjects each of the ``Breast`` and ``Sarcoma`` collection.
 
-    Note: existing subjects are not modified. In order to refresh the
-    seed subjects, drop the ``qiprofile_test`` database first.
+    :Note: existing subjects are not modified. In order to refresh the
+      seed subjects, drop the ``qiprofile_test`` database first.
 
-
-    @return: three :obj:`PROJECT` subjects for each collection in
+    :return:: three :obj:`PROJECT` subjects for each collection in
         :obj:`COLLECTIONS`
     """
     # Initialize the pseudo-random generator.
@@ -315,9 +314,9 @@ def _seed_subject(collection, subject_number):
     subject is ignored. Otherwise, a new subject is created
     and populated with detail information.
 
-    @param collection: the subject collection
-    @param subject_number: the subject number
-    @return: the subject with the given collection and number
+    :param collection: the subject collection
+    :param subject_number: the subject number
+    :return: the subject with the given collection and number
     """
     try:
         sbj = Subject.objects.get(number=subject_number, project=PROJECT,
@@ -345,6 +344,7 @@ def _create_subject(collection, subject_number):
     # The subject with just a secondary key.
     subject = Subject(project=PROJECT, collection=collection.name,
                       number=subject_number)
+    
     # The patient demographics.
     yr = _random_int(1950, 1980)
     subject.birth_date = datetime(yr, 7, 7, tzinfo=pytz.utc)
@@ -357,37 +357,15 @@ def _create_subject(collection, subject_number):
     # The weight is between 100 and 200.
     subject.weight = _random_int(100, 200)
 
-    # Make the sessions.
-    session_cnt = collection.visit_count
-
-    # The modeling input parameters.
-    mdl_params = dict(r1_0_val=0.7, baseline_end_idx=1)
-    # The modeling object.
-    modeling = Modeling(technique='Bolero', input_parameters=mdl_params,
-                        results=[])
-
-    # The registration configuration dictionary key.
-    reg_cfg_key = "reg_%s" % uid.generate_string_uid()
-
-    # The modeling dictionary key.
-    mdl_key = "pk_%s" % uid.generate_string_uid()
-
-    # The registration configuration.
-    reg_cfg = Registration.Configuration(
-        technique = 'ANTS',
-        parameters=REG_PARAMS,
-        modeling={mdl_key: modeling}
-    )
-    reg_cfg_dict = {reg_cfg_key: reg_cfg}
-
-    # The scan sets.
-    t1 = ScanSet(scan_type='T1', registration=reg_cfg_dict)
-    t2 = ScanSet(scan_type='T2')
-    subject.scan_sets = dict(t1=t1, t2=t2)
-
+    # The registration dictionary key.
+    reg_key = "reg_%s" % uid.generate_string_uid()
+    # The scans.
+    t1 = Scan(name='T1', registration=reg_dict)
+    t2 = Scan(name='T2')
+    subject.scans = dict(t1=t1, t2=t2)
     # The sessions.
-    subject.sessions = [_create_session(collection, subject, sess_nbr, reg_cfg_dict)
-                for sess_nbr in range(1, session_cnt + 1)]
+    subject.sessions = [_create_session(collection, subject, i + 1, reg_dict)
+                for i in range(collection.visit_count)]
 
     # The neodjuvant treatment starts a few days after the first visit.
     offset = _random_int(0, 3)
@@ -538,19 +516,16 @@ TAU_I_FILE_NAME = 'tau_i_trans.nii.gz'
 
 COLOR_TABLE_FILE_NAME = 'etc/jet_colors.txt'
 
-def _create_session(collection, subject, session_number, reg_cfg_dict):
+def _create_session(collection, subject, session_number, reg_dict):
     # Stagger the inter-session duration.
     date = _create_session_date(subject, session_number)
 
     # The bolus arrival.
     arv = int(round((0.5 - random.random()) * 4)) + AVG_BOLUS_ARRIVAL_NDX
-    # Make the volume list.
-    volumes = _create_all_volume(collection)
 
     # Make the scans.
-    t1_scan = _create_t1_scan(subject, session_number, volumes, arv,
-                              reg_cfg_dict)
-    t2_scan = _create_t2_scan(subject, session_number, volumes, arv)
+    t1_scan = _create_t1_scan(collection, subject, session_number, arv, reg_dict)
+    t2_scan = _create_t2_scan(collection, subject, session_number, arv)
     scans = dict(t1=t1_scan, t2=t2_scan)
 
     # Make the session detail.
@@ -561,9 +536,9 @@ def _create_session(collection, subject, session_number, reg_cfg_dict):
     detail.save()
 
     # The session modeling results.
-    for reg_cfg_key, reg_cfg in reg_cfg_dict.iteritems():
+    for reg_key, reg in reg_dict.iteritems():
         mdl_result = _create_modeling_result(subject, session_number)
-        for mdl in reg_cfg.modeling.itervalues():
+        for mdl in reg.modeling.itervalues():
             mdl.results.append(mdl_result)
 
     return Session(number=session_number, acquisition_date=date,
@@ -631,58 +606,73 @@ def _create_session_date(subject, session_number):
     return DATE_0 + timedelta(days=offset)
 
 
-def _create_all_volume(collection):
-    # @param collection the Breast or Sarcoma collection
-    # @returns an array of volume objects
-    return [Volume(number=number) for number in collection.volume_numbers]
-
-
-def _create_t1_scan(subject, session_number, volume, bolus_arrival_index,
-                    reg_cfg_dict):
-    files = _create_scan_filenames(subject, session_number, volume, 't1')
-    intensity = _create_intensity(len(volume), bolus_arrival_index)
+def _create_t1_scan(collection, subject, session_number, bolus_arrival_index, reg_dict):
+    # Make the volume image file names.
+    filenames = [_scan_filename(subject, session_number, i+1, 't1')
+                 for i in range(collection.volume_count)]
+    # Make the average intensity values.
+    intensities = _create_intensities(collection.volume_count, bolus_arrival_index)
     # Add a motion artifact.
-    start = 12 + _random_int(0, 5)
-    for i in range(start, start + 5):
-        intensity.intensities[i] -= random.random() * 8
+    _add_motion_artifact(intensities)
+    # Make the volumes
+    volumes = [Volume(filename=filenames[i], average_intensity=intensities[i])
+               for i in range(collection.volume_count)]   
+    
     # Make the T1 registrations.
-    regs = {reg_cfg_key: _create_registration(subject, session_number, volume,
-                                 bolus_arrival_index)
-            for reg_cfg_key in reg_cfg_dict.iterkeys()}
+    regs = {reg_key: _create_registration(collection, subject, session_number,
+                                          bolus_arrival_index)
+            for reg_key in reg_dict.iterkeys()}
 
-    return Scan(scan_type='t1', files=files, intensity=intensity, registration=regs)
-
-
-def _create_t2_scan(subject, session_number, volume, bolus_arrival_index):
-    files = _create_scan_filenames(subject, session_number, volume, 't2')
-    intensity = _create_intensity(len(volume), bolus_arrival_index)
-
-    return Scan(scan_type='t2', files=files, intensity=intensity)
+    return Scan(type='T1', description='T1 SPIN ECHO', volumes=volumes, registration=regs)
 
 
-def _create_registration(subject, session_number, volume, bolus_arrival_index):
+def _create_t2_scan(collection, subject, session_number, bolus_arrival_index):
+    # Make the volume image file names.
+    filenames = [_scan_filename(subject, session_number, i+1, 't1')
+                 for i in range(collection.volume_count)]
+    # Make the average intensity values.
+    intensities = _create_intensities(collection.volume_count, bolus_arrival_index)
+    # Make the volumes.
+    volumes = [Volume(filename=filenames[i], average_intensity=intensities[i])
+               for i in range(collection.volume_count)]   
+
+    return Scan(type='T2', description='T2 AX FRFSE', files=files)
+
+
+def _create_registration(collection, subject, session_number, bolus_arrival_index):
+    # The XNAT resource name.
     resource = "reg_%s" % uid.generate_string_uid()
-    files = _create_registration_filenames(subject, session_number, resource,
-                                           volume)
-    intensity = _create_intensity(len(volume), bolus_arrival_index)
+    # Make the volume image file names.
+    filenames = [_scan_filename(subject, session_number, i+1, 't1')
+                 for i in range(collection.volume_count)]
+    # Make the average intensity values.
+    intensities = _create_intensities(collection.volume_count, bolus_arrival_index)
+    # Make the volumes.
+    volumes = [Volume(filename=filenames[i], average_intensity=intensities[i])
+               for i in range(collection.volume_count)]   
 
-    return Registration(resource=resource, files=files, intensity=intensity)
+    # The modeling object. The results will be filled in later.
+    modeling = Modeling(technique='Bolero', input_parameters=MODELING_INPUT_PARAMS,
+                        results=[])
+    # The modeling dictionary key.
+    mdl_key = "pk_%s" % uid.generate_string_uid()
+
+    return Registration(technique='ANTS', parameters=REG_PARAMS, resource=resource,
+                        volumes=volumes, modeling={mdl_key: modeling})
 
 
-def _create_scan_filenames(subject, session_number, volumes, scan_type):
+def _create_scan_filenames(subject, session, scan_number, volume):
     # Creates the file names for the given session. The file is
     # name is given as:
     #
-    # ``data/``*project*``/``*subject*``/``*session*``/scan/``*number*``/volume``*number*``_``*type*``.nii.gz``
+    # ``data/``*project*``/``*subject*``/``*session*``/scan/``*scan_number*``/volume``*volume*``_``*suffix*``.nii.gz``
     #
-    # where:
-    # * *number* is the volume number
-    # * *type* is the scan type
+    # where *suffix* is the lower-case scan name.
     #
     # e.g.::
     #
     #     data/QIN_Test/Breast003/Session02/scan/2/volume002_t1.nii.gz
-    return [_scan_filename(subject, session_number, volume.number, scan_type)
+    return [_scan_filename(subject, session_number, volume.number, scan_name.lower())
             for volume in volumes]
 
 
@@ -700,11 +690,11 @@ def _create_registration_filenames(subject, session_number, resource, volumes):
     #
     #     data/QIN_Test/Sarcoma003/Session02/resource/reg_01/volume027.nii.gz
     #
-    # @param subject the parent subject
-    # @param session_number the session number
-    # @param name the registration name
-    # @param volumes the volumes array
-    # @return the file name array
+    # :param subject: the parent subject
+    # :param session_number: the session number
+    # :param name: the registration name
+    # :param volumes: the volumes array
+    # :return: the file name array
     return [_registration_filename(subject, session_number, volume.number, resource)
             for volume in volumes]
 
@@ -720,9 +710,20 @@ SCAN_TMPL = SESSION_TMPL + "SCANS/%d/NIFTI/" + SCAN_FILE_TMPL
 RESOURCE_TMPL = SESSION_TMPL + "RESOURCES/%s/%s"
 
 
-def _scan_filename(subject, session_number, volume_number, scan_type):
+def _scan_filename(subject, session, scan, volume, suffix):
+    # Creates the file name for the given scan hierarchy. The file is
+    # name is given by:
+    #
+    # ``data/``*project*``/``*subject*``/``*session*``/scan/``*scan*``/volume``*volume*``_``*suffix*``.nii.gz``
+    #
+    # e.g.::
+    #
+    #     data/QIN_Test/Breast003/Session02/scan/2/volume002_t1.nii.gz
+    #
+    # :param subject: the Subject object
+    # :param session: the
     return SCAN_TMPL % (subject.project, subject.collection, subject.number,
-                        session_number, volume_number, volume_number, scan_type)
+                        session_number, scan_number, volume_number, suffix)
 
 
 def _registration_filename(subject, session_number, volume, name):
@@ -736,45 +737,6 @@ def _resource_filename(subject, session_number, resource, filename):
     return RESOURCE_TMPL % (subject.project, subject.collection,
                             subject.number, session_number, resource, filename)
 
-SPLITEXT_PAT = re.compile("""
-    (.*?)           # The file path without the extension
-    (               # The extension group
-        (\.\w+)+    # The (possibly composite) extension
-    )?              # The extension is optional
-    $               # Anchor to the end of the file path
-    """, re.VERBOSE)
-"""
-Regexp pattern that splits the name and extension.
-
-:see: :meth:`splitexts`
-"""
-
-
-def splitexts(path):
-    """
-    Splits the given file path into a name and extension.
-    Unlike ``os.path.splitext``, the resulting extension can be composite.
-
-    Example:
-
-    >>> import os
-    >>> os.path.splitext('/tmp/foo.nii.gz')
-    ('/tmp/foo.nii', '.gz')
-    >>> from qiutil.file_helper import splitexts
-    >>> splitexts('/tmp/foo.3/bar.nii.gz')
-    ('/tmp/foo.3/bar', '.nii.gz')
-
-    This function is lifted from the ``qiutil`` project.
-
-    :param path: the file path
-    :return: the *(prefix, extensions)* tuple
-    """
-    matches = SPLITEXT_PAT.match(path).groups()[:2]
-    # Pad with an empty extension, if necessary.
-    matches += (None,) * (2 - len(matches))
-
-    return tuple(matches)
-
 
 def _create_label_map(modeling_file):
     base, ext = splitexts(modeling_file)
@@ -783,41 +745,54 @@ def _create_label_map(modeling_file):
     return LabelMap(filename=label_map, color_table=COLOR_TABLE_FILE_NAME)
 
 
-def _create_intensity(count, bolus_arrival_index):
+def _create_intensities(count, bolus_arrival_index):
     """
-    @param count the number of time points
-    @param bolus_arrival_index the bolus arrival volume index
-    @return the Intensity object
+    :param count: the number of time points
+    :param bolus_arrival_index: the bolus arrival volume index
+    :return: the intensities array
     """
-    # Ramp intensity up logarithmically until two time points after
-    # bolus arrival.
+    # Ramp intensity up logarithmically (+ or - up to 5) until two time
+    # points after bolus arrival.
     top = bolus_arrival_index + 2
-    intensities = [(math.log(i) * 20) + (random.random() * 5)
-                   for i in range(1, top + 2)]
-    arv_intensity = intensities[top]
+    intensities = [(math.log(i + 1) * 20) + (random.random() * 5)
+                   for i in range(top + 1)]
+    top_intensity = intensities[top]
+    
     # Tail intensity off inverse exponentially thereafter.
-    for i in range(1, count - top):
+    for i in range(count - top - 1):
         # A negative exponential declining factor.
-        factor = math.exp(-2 * (float(i)/25))
+        factor = math.exp(-2 * (float(i + 1)/25))
         # The signal intensity.
-        intensity = (factor * arv_intensity) + (random.random() * 5)
+        intensity = (factor * top_intensity) + (random.random() * 5)
         intensities.append(intensity)
 
     return Intensity(intensities=intensities)
 
 
+def _add_motion_artifact(intensities):
+    """
+    Introduces a blip in the given intensity values. Five intensity values
+    roughly halfway into the sequence are skewed slightly downward.
+    
+    :param intensities: the intensity values
+    """
+    start = int(len(intensities) / 2) + _random_int(-2, 2)
+    for i in range(start, start + 5):
+        intensity.intensities[i] -= random.random() * 8
+
+
 def _random_int(low, high):
     """
-    @param low the inclusive minimum value
-    @param high the inclusive maximum value
-    @return a random integer in the inclusive [low, high] range
+    :param low: the inclusive minimum value
+    :param high: the inclusive maximum value
+    :return: a random integer in the inclusive [low, high] range
     """
     return int(Decimal(random.random() * (high - low)).to_integral_value()) + low
 
 
 def _random_boolean():
     """
-    @return a random True or False value
+    :return: a random True or False value
     """
     if _random_int(0, 1):
         return True
