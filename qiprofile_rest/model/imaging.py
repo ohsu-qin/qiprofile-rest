@@ -343,7 +343,7 @@ class Modeling(mongoengine.EmbeddedDocument):
                                     resource='pk_h7Jtl', result=result)
 
     It is then the responsibility of an imaging web app REST read client
-    to interpret the keys ``k_trans`` and ``chi_sq`` and display them
+    to interpret the modeling result dictionary items and display them
     appropriately.
     
     .. reST substitutions:
