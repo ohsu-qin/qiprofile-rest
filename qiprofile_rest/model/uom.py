@@ -49,14 +49,23 @@ class Measurement(mongoengine.EmbeddedDocument):
     """
 
     def __init__(self, *args, **kwargs):
-        # Convert the amount to a Decimal, if necessary.
-        # The amount can be the first positional argument
-        # or a keyword argument.
+        """
+        Initializes the Measurement document. The amount can be either
+        a positional or a keyword argument. The amount is converted to
+        a Decimal.
+        
+        :param args: the amount as a positional argument
+        :param kwargs: the following keyword arguments:
+        :keyword amount: the amount as a keyword argument
+        """
+        # Convert the amount to a Decimal, if necessary. The amount
+        # can be the first positional argument or a keyword argument.
         if args:
             args = list(args)
             args[0] = self._as_decimal(args[0])
         elif 'amount' in kwargs:
             kwargs['amount'] = self._as_decimal(kwargs['amount'])
+        
         super(Measurement, self).__init__(*args, **kwargs)
 
     def _as_decimal(self, value):
