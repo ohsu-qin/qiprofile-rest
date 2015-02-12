@@ -6,15 +6,16 @@ import pytz
 import random
 import math
 from decimal import Decimal
+from bunch import Bunch
 from mongoengine import connect
 from qiutil import uid
 from qiutil.file import splitexts
 from qiprofile_rest import choices
 from qiprofile_rest.model.subject import Subject
-from qiprofile_rest.model.imaging import (Session, SessionDetail,
-                                   Modeling, ModelingResult, ModelingParameter,
-                                   LabelMap, Volume, Scan, ScanSet, Registration,
-                                   Intensity, Probe)
+from qiprofile_rest.model.imaging import (Session, SessionDetail, Modeling,
+                                          ModelingProtocol, Scan, ScanProtocol,
+                                          Registration, RegistrationProtocol,
+                                          LabelMap, Volume)
 from qiprofile_rest.model.uom import (Measurement, Weight)
 from qiprofile_rest.model.clinical import (Treatment, Drug, Dosage, Biopsy,
                                            Surgery, Assessment, GenericEvaluation,
@@ -261,6 +262,7 @@ REG_PARAMS = dict(
 # The modeling input parameters.
 MODELING_INPUT_PARAMS = dict(r1_0_val=0.7, baseline_end_idx=1)
 
+PROTOCOLS = Bunch()
 
 def seed():
     """
@@ -275,6 +277,10 @@ def seed():
     """
     # Initialize the pseudo-random generator.
     random.seed()
+    
+    # Make the protocols.
+    PROTOCOLS.update(_get_or_create_protocols())
+    
     # Make the subjects.
     # Note: itertools chain on a generator is preferable to iterate over
     # the collections. This works in python 1.7.1, but not python 1.7.2.
@@ -339,6 +345,26 @@ The rough US race incidence for the respective race choices.
 The incidences sum to 100.
 """
 
+def _get_or_create_protocols():
+    # The modeling protocol.
+    bolero_defs = dict(input_parameters=MODELING_INPUT_PARAMS)
+    bolero, _ = ModelingProtocol.objects.get_or_create(
+        technique='Bolero', defaults=bolero_defs
+    )
+    scan_defs = dict(orientation='axial')
+    # The T1 scan protocol.
+    t1, _ = ScanProtocol.objects.get_or_create(scan_type='T1',
+                                               defaults=scan_defs)
+    # The T2 scan protocol.
+    t2, _ = ScanProtocol.objects.get_or_create(scan_type='T2',
+                                               defaults=scan_defs)
+    # The registration protocol.
+    ants_defs = dict(parameters=REG_PARAMS)
+    ants, _ = RegistrationProtocol.objects.get_or_create(technique='ANTS',
+                                                         defaults=ants_defs)
+    
+    return dict(t1=t1, t2=t2, bolero=bolero, ants=ants)
+
 
 def _create_subject(collection, subject_number):
     # The subject with just a secondary key.
@@ -357,14 +383,8 @@ def _create_subject(collection, subject_number):
     # The weight is between 100 and 200.
     subject.weight = _random_int(100, 200)
 
-    # The registration dictionary key.
-    reg_key = "reg_%s" % uid.generate_string_uid()
-    # The scans.
-    t1 = Scan(name='T1', registration=reg_dict)
-    t2 = Scan(name='T2')
-    subject.scans = dict(t1=t1, t2=t2)
     # The sessions.
-    subject.sessions = [_create_session(collection, subject, i + 1, reg_dict)
+    subject.sessions = [_create_session(collection, subject, i + 1)
                 for i in range(collection.visit_count)]
 
     # The neodjuvant treatment starts a few days after the first visit.
@@ -516,36 +536,47 @@ TAU_I_FILE_NAME = 'tau_i_trans.nii.gz'
 
 COLOR_TABLE_FILE_NAME = 'etc/jet_colors.txt'
 
-def _create_session(collection, subject, session_number, reg_dict):
+def _create_session(collection, subject, session_number):
+    """
+    Returns a new Session object which includes the following:
+    * a T1 scan with a registration
+    * a T2 scan
+    * a modeling result for the registration
+    """
     # Stagger the inter-session duration.
     date = _create_session_date(subject, session_number)
-
-    # The bolus arrival.
-    arv = int(round((0.5 - random.random()) * 4)) + AVG_BOLUS_ARRIVAL_NDX
-
-    # Make the scans.
-    t1_scan = _create_t1_scan(collection, subject, session_number, arv, reg_dict)
-    t2_scan = _create_t2_scan(collection, subject, session_number, arv)
-    scans = dict(t1=t1_scan, t2=t2_scan)
-
     # Make the session detail.
-    detail = SessionDetail(bolus_arrival_index=arv, volumes=volumes,
-                           scans=scans)
-
-    # Save the detail, since it is not embedded.
+    detail = _create_session_detail(collection, subject, session_number)
+    # Save the detail first, since it is not embedded and we need to
+    # set the detail reference to make the session.
     detail.save()
 
-    # The session modeling results.
-    for reg_key, reg in reg_dict.iteritems():
-        mdl_result = _create_modeling_result(subject, session_number)
-        for mdl in reg.modeling.itervalues():
-            mdl.results.append(mdl_result)
+    # The session modeling.
+    modeling = _create_modeling(subject, session_number)
 
     return Session(number=session_number, acquisition_date=date,
-                   detail=detail)
+                   modeling=[modeling], detail=detail)
 
 
-def _create_modeling_result(subject, session_number):
+def _create_session_detail(collection, subject, session_number):
+    """
+    Returns a new SessionDetail object which includes the following:
+    * a T1 scan with a registration
+    * a T2 scan
+    * a modeling result for the registration
+    """
+    # The bolus arrival.
+    arv = int(round((0.5 - random.random()) * 4)) + AVG_BOLUS_ARRIVAL_NDX
+    # Make the scans.
+    t1 = _create_t1_scan(collection, subject, session_number, arv)
+    t2 = _create_t2_scan(collection, subject, session_number, arv)
+    scans = [t1, t2]
+
+    # Return the session detail.
+    return SessionDetail(scans=scans)
+
+
+def _create_modeling(subject, session_number):
     # The modeling resource name.
     resource = "pk_%s" % uid.generate_string_uid()
 
@@ -555,44 +586,47 @@ def _create_modeling_result(subject, session_number):
     fxl_k_trans_file = _resource_filename(subject, session_number, resource,
                                           FXL_K_TRANS_FILE_NAME)
     fxl_k_trans_label_map = _create_label_map(fxl_k_trans_file)
-    fxl_k_trans = ModelingParameter(average=fxl_k_trans_avg,
-                                    filename=fxl_k_trans_file,
-                                    label_map=fxl_k_trans_label_map)
+    fxl_k_trans = Modeling.ParameterResult(average=fxl_k_trans_avg,
+                                           filename=fxl_k_trans_file,
+                                           label_map=fxl_k_trans_label_map)
 
     factor = DELTA_K_TRANS_FACTOR + ((random.random() - 0.5) * 0.4)
     fxr_k_trans_avg = fxl_k_trans_avg * factor
     fxr_k_trans_file = _resource_filename(subject, session_number, resource,
                                           FXR_K_TRANS_FILE_NAME)
     fxr_k_trans_label_map = _create_label_map(fxr_k_trans_file)
-    fxr_k_trans = ModelingParameter(average=fxr_k_trans_avg,
-                                    filename=fxr_k_trans_file,
-                                    label_map=fxr_k_trans_label_map)
+    fxr_k_trans = Modeling.ParameterResult(average=fxr_k_trans_avg,
+                                           filename=fxr_k_trans_file,
+                                           label_map=fxr_k_trans_label_map)
 
     delta_k_trans_avg = fxl_k_trans_avg - fxr_k_trans_avg
     delta_k_trans_file = _resource_filename(subject, session_number, resource,
                                             DELTA_K_TRANS_FILE_NAME)
     delta_k_trans_label_map = _create_label_map(delta_k_trans_file)
-    delta_k_trans = ModelingParameter(average=delta_k_trans_avg,
-                                      filename=delta_k_trans_file,
-                                      label_map=delta_k_trans_label_map)
+    delta_k_trans = Modeling.ParameterResult(average=delta_k_trans_avg,
+                                             filename=delta_k_trans_file,
+                                             label_map=delta_k_trans_label_map)
 
     offset = (0.5 - random.random()) * 0.2
     v_e_avg = V_E_0 + offset
     v_e_file = _resource_filename(subject, session_number, resource, V_E_FILE_NAME)
     v_e_label_map = _create_label_map(v_e_file)
-    v_e = ModelingParameter(average=v_e_avg, filename=v_e_file,
-                            label_map=v_e_label_map)
+    v_e = Modeling.ParameterResult(average=v_e_avg, filename=v_e_file,
+                                   label_map=v_e_label_map)
 
     offset = (0.5 - random.random()) * 0.2
     tau_i_avg = TAU_I_0 + offset
     tau_i_file = _resource_filename(subject, session_number, resource, V_E_FILE_NAME)
     tau_i_label_map = _create_label_map(tau_i_file)
-    tau_i = ModelingParameter(average=tau_i_avg, filename=tau_i_file,
-                                      label_map=tau_i_label_map)
+    tau_i = Modeling.ParameterResult(average=tau_i_avg, filename=tau_i_file,
+                                     label_map=tau_i_label_map)
+    
+    result = dict(fxl_k_trans=fxl_k_trans, fxr_k_trans=fxr_k_trans,
+                  delta_k_trans=delta_k_trans, v_e=v_e, tau_i=tau_i)
 
-    return ModelingResult(resource=resource, fxl_k_trans=fxl_k_trans, fxr_k_trans=fxr_k_trans,
-                          delta_k_trans=delta_k_trans, v_e=v_e, tau_i=tau_i)
-
+    return Modeling(protocol=PROTOCOLS.bolero,
+                    source=Modeling.Source(registration=PROTOCOLS.ants),
+                    resource=resource, result=result)
 
 SESSION_OFFSET_RANGES = dict(
     Breast=[(0, 5), (10, 15), (25, 30), (50,60)],
@@ -606,136 +640,123 @@ def _create_session_date(subject, session_number):
     return DATE_0 + timedelta(days=offset)
 
 
-def _create_t1_scan(collection, subject, session_number, bolus_arrival_index, reg_dict):
+def _create_t1_scan(collection, subject, session_number, bolus_arrival_index):
     # Make the volume image file names.
-    filenames = [_scan_filename(subject, session_number, i+1, 't1')
+    filenames = [_scan_filename(subject, session_number, 1, i+1)
                  for i in range(collection.volume_count)]
     # Make the average intensity values.
     intensities = _create_intensities(collection.volume_count, bolus_arrival_index)
     # Add a motion artifact.
     _add_motion_artifact(intensities)
-    # Make the volumes
-    volumes = [Volume(filename=filenames[i], average_intensity=intensities[i])
+    # Make the volumes.
+    volumes = [Volume(number=i+1, filename=filenames[i], average_intensity=intensities[i])
                for i in range(collection.volume_count)]   
     
-    # Make the T1 registrations.
-    regs = {reg_key: _create_registration(collection, subject, session_number,
-                                          bolus_arrival_index)
-            for reg_key in reg_dict.iterkeys()}
+    # Make the T1 registration.
+    reg = _create_registration(collection, subject, session_number,
+                               bolus_arrival_index)
 
-    return Scan(type='T1', description='T1 SPIN ECHO', volumes=volumes, registration=regs)
+    return Scan(number=1, protocol=PROTOCOLS.t2, volumes=volumes, registrations=[reg])
 
 
 def _create_t2_scan(collection, subject, session_number, bolus_arrival_index):
     # Make the volume image file names.
-    filenames = [_scan_filename(subject, session_number, i+1, 't1')
+    filenames = [_scan_filename(subject, session_number, 2, i+1)
                  for i in range(collection.volume_count)]
     # Make the average intensity values.
     intensities = _create_intensities(collection.volume_count, bolus_arrival_index)
     # Make the volumes.
-    volumes = [Volume(filename=filenames[i], average_intensity=intensities[i])
+    volumes = [Volume(number=i+1, filename=filenames[i], average_intensity=intensities[i])
                for i in range(collection.volume_count)]   
 
-    return Scan(type='T2', description='T2 AX FRFSE', files=files)
+    return Scan(number=2, protocol=PROTOCOLS.t2, volumes=volumes)
 
 
 def _create_registration(collection, subject, session_number, bolus_arrival_index):
     # The XNAT resource name.
     resource = "reg_%s" % uid.generate_string_uid()
     # Make the volume image file names.
-    filenames = [_scan_filename(subject, session_number, i+1, 't1')
+    filenames = [_registration_filename(subject, session_number, resource, i+1)
                  for i in range(collection.volume_count)]
     # Make the average intensity values.
     intensities = _create_intensities(collection.volume_count, bolus_arrival_index)
     # Make the volumes.
-    volumes = [Volume(filename=filenames[i], average_intensity=intensities[i])
+    volumes = [Volume(number=i+1, filename=filenames[i], average_intensity=intensities[i])
                for i in range(collection.volume_count)]   
 
-    # The modeling object. The results will be filled in later.
-    modeling = Modeling(technique='Bolero', input_parameters=MODELING_INPUT_PARAMS,
-                        results=[])
-    # The modeling dictionary key.
-    mdl_key = "pk_%s" % uid.generate_string_uid()
-
-    return Registration(technique='ANTS', parameters=REG_PARAMS, resource=resource,
-                        volumes=volumes, modeling={mdl_key: modeling})
-
-
-def _create_scan_filenames(subject, session, scan_number, volume):
-    # Creates the file names for the given session. The file is
-    # name is given as:
-    #
-    # ``data/``*project*``/``*subject*``/``*session*``/scan/``*scan_number*``/volume``*volume*``_``*suffix*``.nii.gz``
-    #
-    # where *suffix* is the lower-case scan name.
-    #
-    # e.g.::
-    #
-    #     data/QIN_Test/Breast003/Session02/scan/2/volume002_t1.nii.gz
-    return [_scan_filename(subject, session_number, volume.number, scan_name.lower())
-            for volume in volumes]
-
-
-def _create_registration_filenames(subject, session_number, resource, volumes):
-    # Creates the file names for the given resource and volumes list. The file is
-    # name is given as:
-    #
-    # ``data/``*project*``/``*subject*``/``*session*``/resource/``*name*``/volume``*number*``.nii.gz``
-    #
-    # where:
-    # * *resource* is the resource name
-    # * *number* is the volume number
-    #
-    # e.g.::
-    #
-    #     data/QIN_Test/Sarcoma003/Session02/resource/reg_01/volume027.nii.gz
-    #
-    # :param subject: the parent subject
-    # :param session_number: the session number
-    # :param name: the registration name
-    # :param volumes: the volumes array
-    # :return: the file name array
-    return [_registration_filename(subject, session_number, volume.number, resource)
-            for volume in volumes]
+    return Registration(protocol=PROTOCOLS.ants, resource=resource, volumes=volumes)
 
 
 SESSION_TMPL = "data/%s/arc001/%s%03d_Session%02d/"
 
-SCAN_FILE_TMPL = "volume%03d_%s.nii.gz"
+SCAN_FILE_TMPL = "volume%02d.nii.gz"
 
-REG_FILE_TMPL = "volume%03d.nii.gz"
+REG_FILE_TMPL = "volume%02d.nii.gz"
 
 SCAN_TMPL = SESSION_TMPL + "SCANS/%d/NIFTI/" + SCAN_FILE_TMPL
 
 RESOURCE_TMPL = SESSION_TMPL + "RESOURCES/%s/%s"
 
 
-def _scan_filename(subject, session, scan, volume, suffix):
-    # Creates the file name for the given scan hierarchy. The file is
-    # name is given by:
-    #
-    # ``data/``*project*``/``*subject*``/``*session*``/scan/``*scan*``/volume``*volume*``_``*suffix*``.nii.gz``
-    #
-    # e.g.::
-    #
-    #     data/QIN_Test/Breast003/Session02/scan/2/volume002_t1.nii.gz
-    #
-    # :param subject: the Subject object
-    # :param session: the
+def _scan_filename(subject, session, scan, volume):
+    """
+    Creates the file name for the given scan volume hierarchy. The file
+    name is given by:
+
+    ``data/``*project*``/``*subject*``/``*session*``/scan/``*scan*``/volume``*volume*``.nii.gz``
+
+    e.g.::
+
+        data/QIN_Test/Breast003/Session02/scan/2/volume02.nii.gz
+
+    :param subject: the Subject object
+    :param session: the session number
+    :param scan: the scan number
+    :param volume: the volume number
+    """
     return SCAN_TMPL % (subject.project, subject.collection, subject.number,
-                        session_number, scan_number, volume_number, suffix)
+                        session, scan, volume)
 
 
-def _registration_filename(subject, session_number, volume, name):
-    resource = "reg_%s" % name
+def _registration_filename(subject, session, resource, volume):
+    """
+    Creates the file name for the given registration volume hierarchy.
+    The file name is given by:
+
+    ``data/``*project*``/``*subject*``/``*session*``/resource/``*resource*``/volume``*volume*``.nii.gz``
+
+    e.g.::
+
+        data/QIN_Test/Breast003/Session02/resource/reg_uHjY3/volume02.nii.gz
+
+    :param subject: the Subject object
+    :param session: the session number
+    :param resource: the registration resource name
+    :param volume: the volume number
+    """
     filename = REG_FILE_TMPL % volume
 
-    return _resource_filename(subject, session_number, resource, filename)
+    return _resource_filename(subject, session, resource, filename)
 
 
-def _resource_filename(subject, session_number, resource, filename):
+def _resource_filename(subject, session, resource, filename):
+    """
+    Creates the file name for the given resource hierarchy and file base name.
+    The file name is given by:
+
+    ``data/``*project*``/``*subject*``/``*session*``/resource/``*resource*``/``*filename*
+
+    e.g.::
+
+        data/QIN_Test/Breast003/Session02/resource/reg_uHjY3/volume02.nii.gz
+
+    :param subject: the Subject object
+    :param session: the session number
+    :param resource: the resource name
+    :param filename: the resource file base name
+    """
     return RESOURCE_TMPL % (subject.project, subject.collection,
-                            subject.number, session_number, resource, filename)
+                            subject.number, session, resource, filename)
 
 
 def _create_label_map(modeling_file):
@@ -766,7 +787,7 @@ def _create_intensities(count, bolus_arrival_index):
         intensity = (factor * top_intensity) + (random.random() * 5)
         intensities.append(intensity)
 
-    return Intensity(intensities=intensities)
+    return intensities
 
 
 def _add_motion_artifact(intensities):
@@ -778,7 +799,7 @@ def _add_motion_artifact(intensities):
     """
     start = int(len(intensities) / 2) + _random_int(-2, 2)
     for i in range(start, start + 5):
-        intensity.intensities[i] -= random.random() * 8
+        intensities[i] -= random.random() * 8
 
 
 def _random_int(low, high):
