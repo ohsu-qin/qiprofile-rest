@@ -4,8 +4,9 @@ import mongoengine
 from eve import Eve
 from eve_mongoengine import EveMongoengine
 from qiprofile_rest.model.subject import Subject
-from qiprofile_rest.model.imaging import (Scan, Modeling, Registration,
-                                          SessionDetail)
+from qiprofile_rest.model.imaging import (SessionDetail, Scan, ScanProtocol,
+                                          RegistrationProtocol,
+                                          ModelingProtocol)
 
 # The application. 
 app = Eve()
