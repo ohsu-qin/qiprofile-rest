@@ -26,7 +26,8 @@ class Subject(mongoengine.Document):
                          ('Non-Hispanic' , 'Not Hispanic or Latino')]
     """The standard FDA ethnicity categories."""
 
-    GENDER_CHOICES = [('Male', 'Male'), ('Female', 'Female')]
+    GENDER_CHOICES = [('M', 'Male'), ('F', 'Female')]
+    """The Male and Female genders."""
 
     meta = dict(collection='qiprofile_subject')
 
@@ -59,7 +60,7 @@ class Subject(mongoengine.Document):
     """The :const:`GENDER_CHOICES` controlled value."""
 
     weight = fields.IntField()
-    """The weight in kilograms."""
+    """The integer weight in kilograms."""
 
     sessions = fields.ListField(field=fields.EmbeddedDocumentField(Session))
     """The list of subject sessions."""
