@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+4.1.2 / 2015-02-12
+------------------
+* Spawn python on the run.py script.
+
 4.1.1 / 2015-02-12
 ------------------
 * Add Volume into image hierarchy.
