@@ -15,7 +15,7 @@ def spawn():
     # The cumbersome but apparently necessary idiom below is required to continuously
     # pipe the server output to the console
     # (cf. http://stackoverflow.com/questions/4417546/constantly-print-subprocess-output-while-process-is-running).
-    proc = Popen([APP], stdout=PIPE, stderr=STDOUT)
+    proc = Popen(['python', APP], stdout=PIPE, stderr=STDOUT)
     while True:
         line = proc.stdout.readline()
         if line == '' and proc.poll() != None:
