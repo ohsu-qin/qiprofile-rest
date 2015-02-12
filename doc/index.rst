@@ -8,7 +8,7 @@ Synopsis
 The Quantitative Imaging Profile REST server serves data for the
 QuIP_ (antitative Imaging Profile) web application.
 
-:API: https://readthedocs.org/projects/qiprofile-rest/api/index.html
+:API: https://qiprofile-rest.readthedocs.org/en/latest/api/index.html
 
 :Git: https://github.com/ohsu-qin/qiprofile-rest
 

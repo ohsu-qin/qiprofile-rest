@@ -318,8 +318,8 @@ class TNM(Outcome):
         @staticmethod
         def tumor_size_choices(tumor_type=None):
             """
-            @param tumor_type the optional tumor type, e.g. ``Breast``
-            @return the tumor_size choices for the given type
+            :param tumor_type: the optional tumor type, e.g. ``Breast``
+            :return: the tumor_size choices for the given type
             """
             if tumor_type not in TNM.Size.TUMOR_SIZE_CHOICES:
                 tumor_type = 'Any'
@@ -329,8 +329,8 @@ class TNM(Outcome):
         @staticmethod
         def suffix_choices(tumor_type=None):
             """
-            @param tumor_type the optional tumor type, e.g. ``Breast``
-            @return the suffix choices for the given type
+            :param tumor_type: the optional tumor type, e.g. ``Breast``
+            :return: the suffix choices for the given type
             """
             if tumor_type not in TNM.Size.SUFFIX_CHOICES:
                 tumor_type = 'Any'
@@ -375,8 +375,8 @@ class TNM(Outcome):
             """
             Parses the given string into a new Size.
 
-            @param value the input string
-            @return the new Size object
+            :param value: the input string
+            :return: the new Size object
             """
             match = klass.SIZE_REGEX.match(value)
             return klass(**match.groupdict())
@@ -427,8 +427,8 @@ class TNM(Outcome):
     @staticmethod
     def lymph_status_choices(tumor_type=None):
         """
-        @param tumor_type the optional tumor type, e.g. ``Breast``
-        @return the lymph_status choices for the given type
+        :param tumor_type: the optional tumor type, e.g. ``Breast``
+        :return: the lymph_status choices for the given type
         """
         if tumor_type not in TNM.LYMPH_STATUS_CHOICES:
             tumor_type = 'Any'
