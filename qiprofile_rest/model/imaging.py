@@ -18,7 +18,9 @@ class Session(mongoengine.EmbeddedDocument):
     acquisition_date = fields.DateTimeField()
     """The session image acquisition date."""
 
-    modeling = fields.ListField(field=fields.EmbeddedDocumentField('Modeling'))
+    modelings = fields.ListField(
+        field=fields.EmbeddedDocumentField('Modeling')
+    )
     """The modeling performed on the session."""
 
     detail = fields.ReferenceField('SessionDetail')
@@ -158,24 +160,37 @@ class ScanProtocol(mongoengine.Document):
     """
 
     meta = dict(collection='qiprofile_scan_protocol')
-
-    scan_type = fields.StringField(required=True)
-    """
-    The scan type designation, e.g. ``T1``.
-    """
     
     ORIENTATION = ['axial', 'sagittal', 'coronal']
     """The three imaging axes."""
+
+    scan_type = fields.StringField(required=True)
+    """
+    The scan type designation controlled value, e.g. ``T1``. The REST update
+    client is responsible for ensuring that scan type synonyms resolve to
+    the same scan type value, e.g. scans with descriptions including ``t2``,
+    ``T2`` and ``T2W`` should all resolve to scan type ``T2``.
+    """
 
     orientation = fields.StringField(choices=ORIENTATION,
                                      max_length=choices.max_length(ORIENTATION))
     """The imaging :const:`ORIENTATION` controlled value."""
     
+    technique = fields.StringField()
+    """
+    The scan technique, e.g. ``STIR``, ``FLAIR`` or ``BLISS``. The REST update
+    client is responsible for ensuring that technique synonyms resolve to the
+    same technique value, e.g. scans with descriptions including ``BLISS`` and
+    ``BLISS_AUTO_SENSE`` should both resolve to technique ``BLISS``.
+    """
+
     description = fields.StringField()
     """
     The image acquisition scan description, e.g. ``T1 AX SPIN ECHO``.
     This field is customarily specified as the DICOM
-    *Series Description* or *Protocol Name* tag.
+    *Series Description* or *Protocol Name* tag. This field is often
+    used by the REST update client to infer the controlled vocabulary
+    scan type, orientation and technique field values.
     """
     
     voxel_size = fields.EmbeddedDocumentField(VoxelSize)

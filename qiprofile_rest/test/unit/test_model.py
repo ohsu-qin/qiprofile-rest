@@ -105,11 +105,11 @@ class TestModel(object):
         # The modeling data.
         ktrans = Modeling.ParameterResult(filename='/path/to/ktrans.nii.gz')
         result = dict(ktrans=ktrans)
-        mdl = Modeling(protocol=protocol, source=source, resource='pk_01',
+        modeling = Modeling(protocol=protocol, source=source, resource='pk_01',
                        result=result)
 
         # Save the subject and embedded session modeling.
-        session = Session(number=1, modeling=[mdl])
+        session = Session(number=1, modelings=[modeling])
         subject.sessions = [session]
         subject.save()
 

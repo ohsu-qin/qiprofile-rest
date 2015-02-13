@@ -197,10 +197,10 @@ class TestSeed(object):
     
     def _validate_modeling(self, subject, session):
         # The registration is modeled.
-        assert_equal(len(session.modeling), 1,
+        assert_equal(len(session.modelings), 1,
                      "%s session %d modeling length is incorrect: %d" %
-                     (subject, session.number, len(session.modeling)))
-        modeling = session.modeling[0]
+                     (subject, session.number, len(session.modelings)))
+        modeling = session.modelings[0]
         assert_is_not_none(modeling.resource,
                            "%s session %d is missing the modeling resource" %
                            (subject, session.number))

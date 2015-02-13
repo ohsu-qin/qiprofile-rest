@@ -490,7 +490,7 @@ def _choose_ethnicity():
 
 def _choose_gender(collection):
     if collection.name == 'Breast':
-        return 'Female'
+        return 'F'
     else:
         # Half of the sarcoma subjects are male, half female.
         index = _random_int(0, 1)
@@ -551,11 +551,11 @@ def _create_session(collection, subject, session_number):
     # set the detail reference to make the session.
     detail.save()
 
-    # The session modeling.
-    modeling = _create_modeling(subject, session_number)
+    # The session modeling objects.
+    modelings = _create_modeling(subject, session_number)
 
     return Session(number=session_number, acquisition_date=date,
-                   modeling=[modeling], detail=detail)
+                   modelings=[modelings], detail=detail)
 
 
 def _create_session_detail(collection, subject, session_number):
