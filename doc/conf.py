@@ -3,6 +3,8 @@ import sys
 import qiprofile_rest
 
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.intersphinx', 'sphinx.ext.todo']
+autoclass_content = "both"
+autodoc_default_flags= ['members', 'show-inheritance']
 source_suffix = '.rst'
 master_doc = 'index'
 project = u'qiprofile-rest'
