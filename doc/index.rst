@@ -41,6 +41,10 @@ Usage
 
        qirest
 
+   In order to start the server in development mode, use the ``--development``
+   option::
+   
+        qirest --development
 
 ---------
 
@@ -61,9 +65,4 @@ Usage
 .. _Python: http://www.python.org
 
 .. _QuIP: https://github.com/ohsu-qin/qiprofile
-
-.. toctree::
-  :hidden:
-  
-  api/index
 

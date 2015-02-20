@@ -3,8 +3,8 @@ import importlib
 import mongoengine
 from eve import Eve
 from eve_mongoengine import EveMongoengine
-from qiprofile_rest.model.subject import Subject
-from qiprofile_rest.model.imaging import (SessionDetail, Scan, ScanProtocol,
+from qiprofile_rest_client.model.subject import Subject
+from qiprofile_rest_client.model.imaging import (SessionDetail, Scan, ScanProtocol,
                                           RegistrationProtocol,
                                           ModelingProtocol)
 

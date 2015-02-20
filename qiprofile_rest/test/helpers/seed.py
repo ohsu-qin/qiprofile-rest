@@ -11,19 +11,16 @@ from mongoengine import connect
 from qiutil import uid
 from qiutil.file import splitexts
 from qiprofile_rest import choices
-from qiprofile_rest.model.subject import Subject
-from qiprofile_rest.model.imaging import (Session, SessionDetail, Modeling,
-                                          ModelingProtocol, Scan, ScanProtocol,
-                                          Registration, RegistrationProtocol,
-                                          LabelMap, Volume)
-from qiprofile_rest.model.uom import (Measurement, Weight)
-from qiprofile_rest.model.clinical import (Treatment, Drug, Dosage, Biopsy,
-                                           Surgery, Assessment, GenericEvaluation,
-                                           TNM, BreastPathology, BreastReceptorStatus,
-                                           HormoneReceptorStatus, BreastGeneticExpression,
-                                           NormalizedAssay, ModifiedBloomRichardsonGrade,
-                                           SarcomaPathology, FNCLCCGrade,
-                                           NecrosisPercentValue, NecrosisPercentRange)
+from qiprofile_rest_client.model.subject import Subject
+from qiprofile_rest_client.model.imaging import (
+  Session, SessionDetail, Modeling, ModelingProtocol, Scan, ScanProtocol,
+  Registration, RegistrationProtocol, LabelMap, Volume)
+from qiprofile_rest_client.model.uom import (Measurement, Weight)
+from qiprofile_rest_client.model.clinical import (
+  Treatment, Drug, Dosage, Biopsy, Surgery, Assessment, GenericEvaluation,
+  TNM, BreastPathology, BreastReceptorStatus, HormoneReceptorStatus,
+  BreastGeneticExpression, NormalizedAssay, ModifiedBloomRichardsonGrade,
+  SarcomaPathology, FNCLCCGrade, NecrosisPercentValue, NecrosisPercentRange)
 
 PROJECT = 'QIN_Test'
 

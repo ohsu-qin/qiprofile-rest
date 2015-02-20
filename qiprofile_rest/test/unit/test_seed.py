@@ -3,9 +3,9 @@ from nose.tools import (assert_is_none, assert_is_instance, assert_in,
 from datetime import datetime
 from mongoengine import connect
 from mongoengine.connection import get_db
-from qiprofile_rest.model.subject import Subject
-from qiprofile_rest.model.uom import Weight
-from qiprofile_rest.model.clinical import (Assessment, Biopsy, Surgery, Drug)
+from qiprofile_rest_client.model.subject import Subject
+from qiprofile_rest_client.model.uom import Weight
+from qiprofile_rest_client.model.clinical import (Assessment, Biopsy, Surgery, Drug)
 from qiprofile_rest.test.helpers import seed
 
 MODELING_RESULT_PARAMS = ['fxl_k_trans', 'fxr_k_trans', 'delta_k_trans', 'v_e', 'tau_i']
