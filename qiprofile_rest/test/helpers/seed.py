@@ -10,7 +10,6 @@ from bunch import Bunch
 from mongoengine import connect
 from qiutil import uid
 from qiutil.file import splitexts
-from qiprofile_rest import choices
 from qiprofile_rest_client.model.subject import Subject
 from qiprofile_rest_client.model.imaging import (
   Session, SessionDetail, Modeling, ModelingProtocol, Scan, ScanProtocol,
@@ -186,15 +185,15 @@ class Sarcoma(Collection):
         mitotic_count = _random_int(1, 3)
         necrosis = _random_int(0, 2)
 
-        return FNCLCCGrade(differentiation=differentiation, mitotic_count=mitotic_count,
-                           necrosis=necrosis)
+        return FNCLCCGrade(differentiation=differentiation,
+                           mitotic_count=mitotic_count, necrosis=necrosis)
 
     def create_pathology(self, **opts):
         # The TNM score.
         tnm = _create_tnm(self, 'p', **opts)
 
         # The tumor site.
-        site = 'Thigh'
+        location = 'Thigh'
 
         # The necrosis percent is either a value or a decile range.
         if _random_boolean():
@@ -209,8 +208,8 @@ class Sarcoma(Collection):
         # The histology
         histology = 'Fibrosarcoma'
 
-        return SarcomaPathology(tnm=tnm, site=site, necrosis_pct=necrosis_pct,
-                                histology=histology)
+        return SarcomaPathology(tnm=tnm, location=location,
+                                necrosis_pct=necrosis_pct, histology=histology)
 
 
 COLLECTIONS = [Breast(), Sarcoma()]
@@ -441,8 +440,9 @@ def _create_subject(collection, subject_number):
     biopsy_path = collection.create_pathology(**opts)
     biopsy = Biopsy(date=biopsy_date, pathology=biopsy_path)
 
-    # The surgery doesn't have an outcome.
-    surgery = Surgery(date=surgery_date)
+    # The surgery has a pathology report.
+    surgery_path = collection.create_pathology(**opts)
+    surgery = Surgery(date=surgery_date, pathology=surgery_path)
 
     # The post-surgery assessment.
     offset = _random_int(3, 13)
@@ -551,8 +551,7 @@ def _create_session(collection, subject, session_number):
     # The session modeling objects.
     modelings = _create_modeling(subject, session_number)
 
-    return Session(number=session_number, acquisition_date=date,
-                   modelings=[modelings], detail=detail)
+    return Session(acquisition_date=date, modelings=[modelings], detail=detail)
 
 
 def _create_session_detail(collection, subject, session_number):
@@ -566,7 +565,7 @@ def _create_session_detail(collection, subject, session_number):
     arv = int(round((0.5 - random.random()) * 4)) + AVG_BOLUS_ARRIVAL_NDX
     # Make the scans.
     t1 = _create_t1_scan(collection, subject, session_number, arv)
-    t2 = _create_t2_scan(collection, subject, session_number, arv)
+    t2 = _create_t2_scan(collection, subject, session_number)
     scans = [t1, t2]
 
     # Return the session detail.
@@ -646,25 +645,21 @@ def _create_t1_scan(collection, subject, session_number, bolus_arrival_index):
     # Add a motion artifact.
     _add_motion_artifact(intensities)
     # Make the volumes.
-    volumes = [Volume(number=i+1, filename=filenames[i], average_intensity=intensities[i])
+    volumes = [Volume(filename=filenames[i], average_intensity=intensities[i])
                for i in range(collection.volume_count)]   
     
     # Make the T1 registration.
     reg = _create_registration(collection, subject, session_number,
                                bolus_arrival_index)
 
-    return Scan(number=1, protocol=PROTOCOLS.t2, volumes=volumes, registrations=[reg])
+    return Scan(number=1, protocol=PROTOCOLS.t1, volumes=volumes, registrations=[reg])
 
 
-def _create_t2_scan(collection, subject, session_number, bolus_arrival_index):
+def _create_t2_scan(collection, subject, session_number):
     # Make the volume image file names.
-    filenames = [_scan_filename(subject, session_number, 2, i+1)
-                 for i in range(collection.volume_count)]
-    # Make the average intensity values.
-    intensities = _create_intensities(collection.volume_count, bolus_arrival_index)
-    # Make the volumes.
-    volumes = [Volume(number=i+1, filename=filenames[i], average_intensity=intensities[i])
-               for i in range(collection.volume_count)]   
+    filename = _scan_filename(subject, session_number, 2, 1)
+    # Make the volume.
+    volumes = [Volume(filename=filename)]   
 
     return Scan(number=2, protocol=PROTOCOLS.t2, volumes=volumes)
 
@@ -678,7 +673,7 @@ def _create_registration(collection, subject, session_number, bolus_arrival_inde
     # Make the average intensity values.
     intensities = _create_intensities(collection.volume_count, bolus_arrival_index)
     # Make the volumes.
-    volumes = [Volume(number=i+1, filename=filenames[i], average_intensity=intensities[i])
+    volumes = [Volume(filename=filenames[i], average_intensity=intensities[i])
                for i in range(collection.volume_count)]   
 
     return Registration(protocol=PROTOCOLS.ants, resource=resource, volumes=volumes)
@@ -686,9 +681,9 @@ def _create_registration(collection, subject, session_number, bolus_arrival_inde
 
 SESSION_TMPL = "data/%s/arc001/%s%03d_Session%02d/"
 
-SCAN_FILE_TMPL = "volume%02d.nii.gz"
+SCAN_FILE_TMPL = "volume%03d.nii.gz"
 
-REG_FILE_TMPL = "volume%02d.nii.gz"
+REG_FILE_TMPL = "volume%03d.nii.gz"
 
 SCAN_TMPL = SESSION_TMPL + "SCANS/%d/NIFTI/" + SCAN_FILE_TMPL
 
@@ -704,7 +699,7 @@ def _scan_filename(subject, session, scan, volume):
 
     e.g.::
 
-        data/QIN_Test/Breast003/Session02/scan/2/volume02.nii.gz
+        data/QIN_Test/Breast003/Session02/scan/2/volume002.nii.gz
 
     :param subject: the Subject object
     :param session: the session number
@@ -724,7 +719,7 @@ def _registration_filename(subject, session, resource, volume):
 
     e.g.::
 
-        data/QIN_Test/Breast003/Session02/resource/reg_uHjY3/volume02.nii.gz
+        data/QIN_Test/Breast003/Session02/resource/reg_uHjY3/volume002.nii.gz
 
     :param subject: the Subject object
     :param session: the session number
@@ -745,7 +740,7 @@ def _resource_filename(subject, session, resource, filename):
 
     e.g.::
 
-        data/QIN_Test/Breast003/Session02/resource/reg_uHjY3/volume02.nii.gz
+        data/QIN_Test/Breast003/Session02/resource/reg_uHjY3/volume002.nii.gz
 
     :param subject: the Subject object
     :param session: the session number
