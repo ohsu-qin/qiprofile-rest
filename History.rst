@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+5.1.3 / 2015-04-03
+------------------
+* Bump client version.
+
 5.1.2 / 2015-04-03
 ------------------
 * Test genomic assay.
