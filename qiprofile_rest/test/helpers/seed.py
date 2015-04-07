@@ -376,8 +376,6 @@ def _create_subject(collection, subject_number):
     subject.ethnicity = _choose_ethnicity()
     # The gender is roughly split.
     subject.gender = _choose_gender(collection)
-    # The weight is between 100 and 200.
-    subject.weight = _random_int(100, 200)
 
     # The sessions.
     subject.sessions = [_create_session(collection, subject, i + 1)
@@ -542,6 +540,8 @@ def _create_session(collection, subject, session_number):
     """
     # Stagger the inter-session duration.
     date = _create_session_date(subject, session_number)
+    # The weight is between 100 and 200.
+    subject_weight = _random_int(100, 200)
     # Make the session detail.
     detail = _create_session_detail(collection, subject, session_number)
     # Save the detail first, since it is not embedded and we need to
@@ -551,7 +551,8 @@ def _create_session(collection, subject, session_number):
     # The session modeling objects.
     modelings = _create_modeling(subject, session_number)
 
-    return Session(acquisition_date=date, modelings=[modelings], detail=detail)
+    return Session(acquisition_date=date, subject_weight=subject_weight,
+                   modelings=[modelings], detail=detail)
 
 
 def _create_session_detail(collection, subject, session_number):
