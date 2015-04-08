@@ -377,8 +377,10 @@ def _create_subject(collection, subject_number):
     # The gender is roughly split.
     subject.gender = _choose_gender(collection)
 
+    # The initial weight is between 100 and 200.
+    weight_0 = _random_int(100, 200)
     # The sessions.
-    subject.sessions = [_create_session(collection, subject, i + 1)
+    subject.sessions = [_create_session(collection, subject, i + 1, weight_0)
                 for i in range(collection.visit_count)]
 
     # The neodjuvant treatment starts a few days after the first visit.
@@ -531,25 +533,25 @@ TAU_I_FILE_NAME = 'tau_i_trans.nii.gz'
 
 COLOR_TABLE_FILE_NAME = 'etc/jet_colors.txt'
 
-def _create_session(collection, subject, session_number):
+def _create_session(collection, subject, session_number, weight_0):
     """
-    Returns a new Session object which includes the following:
+    Returns a new Session object whose detail includes the following:
     * a T1 scan with a registration
     * a T2 scan
     * a modeling result for the registration
     """
     # Stagger the inter-session duration.
     date = _create_session_date(subject, session_number)
-    # The weight is between 100 and 200.
-    subject_weight = _random_int(100, 200)
     # Make the session detail.
     detail = _create_session_detail(collection, subject, session_number)
     # Save the detail first, since it is not embedded and we need to
     # set the detail reference to make the session.
     detail.save()
-
-    # The session modeling objects.
+    # The embedded session modeling objects.
     modelings = _create_modeling(subject, session_number)
+    # The weight varies a bit from the initial weight with a bias towards
+    # weight loss.
+    subject_weight = weight_0 + (_random_int(-10, 5) * (session_number - 1))
 
     return Session(acquisition_date=date, subject_weight=subject_weight,
                    modelings=[modelings], detail=detail)
