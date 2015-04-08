@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+5.1.4 / 2015-04-08
+------------------
+* Add the seed subject weights.
+
 5.1.4 / 2015-04-07
 ------------------
 * Move subject weight from Subject to Session.
