@@ -50,7 +50,6 @@ class TestSeed(object):
 
     def _validate_demographics(self, subject):
         assert_is_not_none(subject.gender, "%s is missing gender" % subject)
-        assert_is_not_none(subject.weight, "%s is missing weight" % subject)
 
     def _validate_clincal_data(self, subject):
         # There are three treatments.
@@ -234,11 +233,17 @@ class TestSeed(object):
 
     def _validate_session(self, subject, session):
         assert_is_not_none(session.acquisition_date,
-                           "%s session %d is missing an acquisition date" %
+                           "%s session %d is missing the acquisition date" %
                            (subject, session.number))
         assert_is_instance(session.acquisition_date, datetime,
                            "%s session %d acquisition date type is incorrect: %s" %
                            (subject, session.number, session.acquisition_date.__class__))
+        assert_is_not_none(session.subject_weight,
+                           "%s session %d is missing the subject weight" %
+                           (subject, session.number))
+        assert_is_instance(session.subject_weight, int,
+                           "%s session %d subject weight type is incorrect: %s" %
+                           (subject, session.number, session.subject_weight.__class__))
         self._validate_modeling(subject, session)
         self._validate_session_detail(subject, session)
     
