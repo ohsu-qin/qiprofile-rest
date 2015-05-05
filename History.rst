@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+5.1.6 / 2015-05-05
+------------------
+* Redeploy.
+
 5.1.5 / 2015-05-05
 ------------------
 * Update qiutil version.
