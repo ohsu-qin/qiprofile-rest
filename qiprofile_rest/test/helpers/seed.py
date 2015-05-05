@@ -259,6 +259,13 @@ REG_PARAMS = dict(
 MODELING_INPUT_PARAMS = dict(r1_0_val=0.7, baseline_end_idx=1)
 
 PROTOCOLS = Bunch()
+"""
+The following protocols:
+* bolero - the Bolero modeling protocol
+* t1 - the T1 scan protocol
+* t2 - the T2 scan protocol
+* ants - the ANTS registration protocol
+"""
 
 def seed():
     """
@@ -275,7 +282,7 @@ def seed():
     random.seed()
     
     # Make the protocols.
-    PROTOCOLS.update(_get_or_create_protocols())
+    PROTOCOLS.update(_create_protocols())
     
     # Make the subjects.
     # Note: itertools chain on a generator is preferable to iterate over
@@ -341,7 +348,8 @@ The rough US race incidence for the respective race choices.
 The incidences sum to 100.
 """
 
-def _get_or_create_protocols():
+def _create_protocols():
+    """Returns the protocols described in :obj:`PROTOCOLS`."""
     # The modeling protocol.
     bolero_defs = dict(input_parameters=MODELING_INPUT_PARAMS)
     bolero, _ = ModelingProtocol.objects.get_or_create(

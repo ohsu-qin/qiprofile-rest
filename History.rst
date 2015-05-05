@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+5.1.5 / 2015-05-05
+------------------
+* Update qiutil version.
+
 5.1.4 / 2015-04-08
 ------------------
 * Add the seed subject weights.
