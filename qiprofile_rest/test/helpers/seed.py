@@ -258,7 +258,7 @@ REG_PARAMS = dict(
 # The modeling input parameters.
 MODELING_INPUT_PARAMS = dict(r1_0_val=0.7, baseline_end_idx=1)
 
-PROTOCOLS = Bunch()
+PROTOCOLS = _create_protocols()
 """
 The following protocols:
 * bolero - the Bolero modeling protocol
@@ -280,9 +280,6 @@ def seed():
     """
     # Initialize the pseudo-random generator.
     random.seed()
-    
-    # Make the protocols.
-    PROTOCOLS.update(_create_protocols())
     
     # Make the subjects.
     # Note: itertools chain on a generator is preferable to iterate over
@@ -367,7 +364,7 @@ def _create_protocols():
     ants, _ = RegistrationProtocol.objects.get_or_create(technique='ANTS',
                                                          defaults=ants_defs)
     
-    return dict(t1=t1, t2=t2, bolero=bolero, ants=ants)
+    return Bunch(t1=t1, t2=t2, bolero=bolero, ants=ants)
 
 
 def _create_subject(collection, subject_number):
@@ -385,8 +382,8 @@ def _create_subject(collection, subject_number):
     # The gender is roughly split.
     subject.gender = _choose_gender(collection)
 
-    # The initial weight is between 100 and 200.
-    weight_0 = _random_int(100, 200)
+    # The initial weight is between 40 and 80 kg.
+    weight_0 = _random_int(40, 80)
     # The sessions.
     subject.sessions = [_create_session(collection, subject, i + 1, weight_0)
                 for i in range(collection.visit_count)]
