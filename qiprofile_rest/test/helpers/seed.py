@@ -23,6 +23,7 @@ from qiprofile_rest_client.model.clinical import (
 
 PROJECT = 'QIN_Test'
 
+
 class Collection(object):
     def __init__(self, name, visit_count, volume_count):
         self.name = name
