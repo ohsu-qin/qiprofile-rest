@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+5.1.7 / 2015-05-15
+------------------
+* Adapt for the REST client package changes.
+
 5.1.6 / 2015-05-05
 ------------------
 * Redeploy.
