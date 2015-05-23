@@ -70,11 +70,11 @@ class TestSeed(object):
 
     def _validate_breast_treatments(self, subject, treatments):
         # Breast has neoadjuvant drugs.
-        neo_tx = next(((trt for trt in treatments if trt.treatment_type == 'Neoadjuvant')),
+        neo_rx = next(((trt for trt in treatments if trt.treatment_type == 'Neoadjuvant')),
                       None)
-        assert_is_not_none(neo_tx, ("%s Subject %d is missing a neodjuvant" +
+        assert_is_not_none(neo_rx, ("%s Subject %d is missing a neodjuvant" +
                                     " treatment") % (subject.collection, subject.number))
-        dosages = neo_tx.dosages
+        dosages = neo_rx.dosages
         assert_equal(len(dosages), 2,
                      (("%s session %d neoadjuvant treatment dosage count is" +
                       " incorrect: %d") % (subject.collection, subject.number, len(dosages))))

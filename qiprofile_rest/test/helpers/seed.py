@@ -215,6 +215,7 @@ class Sarcoma(Collection):
 
 COLLECTIONS = [Breast(), Sarcoma()]
 
+
 def collection_for(name):
     try:
         return next((coll for coll in COLLECTIONS if coll.name == name))
@@ -259,13 +260,15 @@ REG_PARAMS = dict(
 # The modeling input parameters.
 MODELING_INPUT_PARAMS = dict(r1_0_val=0.7, baseline_end_idx=1)
 
-PROTOCOLS = _create_protocols()
+PROTOCOLS = Bunch()
 """
 The following protocols:
 * bolero - the Bolero modeling protocol
 * t1 - the T1 scan protocol
 * t2 - the T2 scan protocol
 * ants - the ANTS registration protocol
+
+:Note: these protocols are added in the :meth:`seed` function.
 """
 
 def seed():
@@ -276,12 +279,13 @@ def seed():
     :Note: existing subjects are not modified. In order to refresh the
       seed subjects, drop the ``qiprofile_test`` database first.
 
-    :return:: three :obj:`PROJECT` subjects for each collection in
-        :obj:`COLLECTIONS`
+    :return:: three :const:`PROJECT` subjects for each collection in
+        :const:`COLLECTIONS`
     """
     # Initialize the pseudo-random generator.
     random.seed()
-    
+    # Make the protocols.
+    PROTOCOLS.update(_create_protocols())
     # Make the subjects.
     # Note: itertools chain on a generator is preferable to iterate over
     # the collections. This works in python 1.7.1, but not python 1.7.2.
@@ -347,7 +351,7 @@ The incidences sum to 100.
 """
 
 def _create_protocols():
-    """Returns the protocols described in :obj:`PROTOCOLS`."""
+    """Returns the protocols described in :const:`PROTOCOLS`."""
     # The modeling protocol.
     bolero_defs = dict(input_parameters=MODELING_INPUT_PARAMS)
     bolero, _ = ModelingProtocol.objects.get_or_create(
@@ -365,8 +369,7 @@ def _create_protocols():
     ants, _ = RegistrationProtocol.objects.get_or_create(technique='ANTS',
                                                          defaults=ants_defs)
     
-    return Bunch(t1=t1, t2=t2, bolero=bolero, ants=ants)
-
+    return dict(t1=t1, t2=t2, bolero=bolero, ants=ants)
 
 def _create_subject(collection, subject_number):
     # The subject with just a secondary key.
@@ -391,12 +394,12 @@ def _create_subject(collection, subject_number):
 
     # The neodjuvant treatment starts a few days after the first visit.
     offset = _random_int(0, 3)
-    neo_tx_begin = subject.sessions[0].acquisition_date + timedelta(days=offset)
+    neo_rx_begin = subject.sessions[0].acquisition_date + timedelta(days=offset)
     # The neodjuvant treatment ends a few days before the last visit.
     offset = _random_int(0, 3)
-    neo_tx_end = subject.sessions[-1].acquisition_date - timedelta(days=offset)
-    neo_tx = Treatment(treatment_type='Neoadjuvant', begin_date=neo_tx_begin,
-                       end_date=neo_tx_end)
+    neo_rx_end = subject.sessions[-1].acquisition_date - timedelta(days=offset)
+    neo_rx = Treatment(treatment_type='Neoadjuvant', start_date=neo_rx_begin,
+                       end_date=neo_rx_end)
 
     # Breast patients have neodjuvant drugs.
     if isinstance(collection, Breast):
@@ -412,25 +415,25 @@ def _create_subject(collection, subject_number):
         pert_amt = Measurement(amount=amt, unit=Weight(), per_unit=Weight(scale='k'))
         pert_dosage = Dosage(agent=pert, amount=pert_amt)
 
-        neo_tx.dosages = [trast_dosage, pert_dosage]
+        neo_rx.dosages = [trast_dosage, pert_dosage]
 
     # The primary treatment (surgery) is a few days after the last scan.
     offset = _random_int(0, 10)
     surgery_date = subject.sessions[-1].acquisition_date + timedelta(days=offset)
-    primary_tx = Treatment(treatment_type='Primary', begin_date=surgery_date,
+    primary_rx = Treatment(treatment_type='Primary', start_date=surgery_date,
                            end_date=surgery_date)
 
     # Adjuvant treatment begins shortly after surgery.
     offset = _random_int(0, 3)
-    adj_tx_begin = surgery_date + timedelta(days=offset)
+    adj_rx_begin = surgery_date + timedelta(days=offset)
     # Adjuvant treatment ends about two weeks later.
     offset = _random_int(10, 20)
-    adj_tx_end = adj_tx_begin + timedelta(days=offset)
-    adj_tx = Treatment(treatment_type='Adjuvant', begin_date=adj_tx_begin,
-                       end_date=adj_tx_end)
+    adj_rx_end = adj_rx_begin + timedelta(days=offset)
+    adj_rx = Treatment(treatment_type='Adjuvant', start_date=adj_rx_begin,
+                       end_date=adj_rx_end)
     
     # Add the treatments.
-    subject.treatments = [neo_tx, primary_tx, adj_tx]
+    subject.treatments = [neo_rx, primary_rx, adj_rx]
 
     # The biopsy is a few days before the first visit.
     offset = _random_int(0, 10)
@@ -538,6 +541,7 @@ V_E_FILE_NAME = 'v_e_trans.nii.gz'
 TAU_I_FILE_NAME = 'tau_i_trans.nii.gz'
 
 COLOR_TABLE_FILE_NAME = 'etc/jet_colors.txt'
+
 
 def _create_session(collection, subject, session_number, weight_0):
     """
