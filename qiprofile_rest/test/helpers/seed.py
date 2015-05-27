@@ -69,18 +69,12 @@ class Breast(Collection):
             assay = self._create_normalized_assay(**assay_opts)
             gene_expr_opts['normalized_assay'] = assay
         genetic_expression = self._create_genetic_expression(**gene_expr_opts)
-        
+
         values = dict(tnm=tnm, hormone_receptors=hormone_receptors,
                       genetic_expression=genetic_expression)
         values.update(opts)
-        
+
         return BreastPathology(**values)
-
-        # HER2 NEU IHC is one of 0, 1, 2, 3.
-        her2_neu_ihc = _random_int(0, 3)
-
-        # HER2 NEU FISH is True (positive) or False (negative).
-        her2_neu_fish = _random_boolean()
 
     def _create_hormone_receptors(self, **opts):
         # The estrogen status.
@@ -102,7 +96,7 @@ class Breast(Collection):
 
         # KI67 is a percent.
         ki67 = _random_int(0, 100)
-        
+
         values = dict(her2_neu_ihc=her2_neu_ihc, her2_neu_fish=her2_neu_fish,
                       ki67=ki67)
         values.update(opts)
@@ -199,18 +193,19 @@ class Sarcoma(Collection):
         # The necrosis percent is either a value or a decile range.
         if _random_boolean():
             value = _random_int(0, 100)
-            necrosis_pct = NecrosisPercentValue(value=value)
+            necrosis_percent = NecrosisPercentValue(value=value)
         else:
             low = _random_int(0, 9) * 10
             start = NecrosisPercentRange.LowerBound(value=low)
             stop = NecrosisPercentRange.UpperBound(value=low+10)
-            necrosis_pct = NecrosisPercentRange(start=start, stop=stop)
+            necrosis_percent = NecrosisPercentRange(start=start, stop=stop)
 
         # The histology
         histology = 'Fibrosarcoma'
 
         return SarcomaPathology(tnm=tnm, location=location,
-                                necrosis_pct=necrosis_pct, histology=histology)
+                                necrosis_percent=necrosis_percent,
+                                histology=histology)
 
 
 COLLECTIONS = [Breast(), Sarcoma()]
@@ -270,6 +265,7 @@ The following protocols:
 
 :Note: these protocols are added in the :meth:`seed` function.
 """
+
 
 def seed():
     """
@@ -368,14 +364,14 @@ def _create_protocols():
     ants_defs = dict(parameters=REG_PARAMS)
     ants, _ = RegistrationProtocol.objects.get_or_create(technique='ANTS',
                                                          defaults=ants_defs)
-    
+
     return dict(t1=t1, t2=t2, bolero=bolero, ants=ants)
 
 def _create_subject(collection, subject_number):
     # The subject with just a secondary key.
     subject = Subject(project=PROJECT, collection=collection.name,
                       number=subject_number)
-    
+
     # The patient demographics.
     yr = _random_int(1950, 1980)
     subject.birth_date = datetime(yr, 7, 7, tzinfo=pytz.utc)
@@ -431,7 +427,7 @@ def _create_subject(collection, subject_number):
     adj_rx_end = adj_rx_begin + timedelta(days=offset)
     adj_rx = Treatment(treatment_type='Adjuvant', start_date=adj_rx_begin,
                        end_date=adj_rx_end)
-    
+
     # Add the treatments.
     subject.treatments = [neo_rx, primary_rx, adj_rx]
 
@@ -460,13 +456,13 @@ def _create_subject(collection, subject_number):
     assessment_tnm = _create_tnm(collection)
     evaluation = GenericEvaluation(outcomes=[assessment_tnm])
     assessment = Assessment(date=assessment_date, evaluation=evaluation)
-    
+
     # Add the encounters.
     subject.encounters = [biopsy, surgery, assessment]
 
     # Save the subject.
     subject.save()
-    
+
     return subject
 
 
@@ -629,7 +625,7 @@ def _create_modeling(subject, session_number):
     tau_i_label_map = _create_label_map(tau_i_file)
     tau_i = Modeling.ParameterResult(average=tau_i_avg, filename=tau_i_file,
                                      label_map=tau_i_label_map)
-    
+
     result = dict(fxl_k_trans=fxl_k_trans, fxr_k_trans=fxr_k_trans,
                   delta_k_trans=delta_k_trans, v_e=v_e, tau_i=tau_i)
 
@@ -659,8 +655,8 @@ def _create_t1_scan(collection, subject, session_number, bolus_arrival_index):
     _add_motion_artifact(intensities)
     # Make the volumes.
     volumes = [Volume(filename=filenames[i], average_intensity=intensities[i])
-               for i in range(collection.volume_count)]   
-    
+               for i in range(collection.volume_count)]
+
     # Make the T1 registration.
     reg = _create_registration(collection, subject, session_number,
                                bolus_arrival_index)
@@ -672,7 +668,7 @@ def _create_t2_scan(collection, subject, session_number):
     # Make the volume image file names.
     filename = _scan_filename(subject, session_number, 2, 1)
     # Make the volume.
-    volumes = [Volume(filename=filename)]   
+    volumes = [Volume(filename=filename)]
 
     return Scan(number=2, protocol=PROTOCOLS.t2, volumes=volumes)
 
@@ -687,7 +683,7 @@ def _create_registration(collection, subject, session_number, bolus_arrival_inde
     intensities = _create_intensities(collection.volume_count, bolus_arrival_index)
     # Make the volumes.
     volumes = [Volume(filename=filenames[i], average_intensity=intensities[i])
-               for i in range(collection.volume_count)]   
+               for i in range(collection.volume_count)]
 
     return Registration(protocol=PROTOCOLS.ants, resource=resource, volumes=volumes)
 
@@ -783,7 +779,7 @@ def _create_intensities(count, bolus_arrival_index):
     intensities = [(math.log(i + 1) * 20) + (random.random() * 5)
                    for i in range(top + 1)]
     top_intensity = intensities[top]
-    
+
     # Tail intensity off inverse exponentially thereafter.
     for i in range(count - top - 1):
         # A negative exponential declining factor.
@@ -799,7 +795,7 @@ def _add_motion_artifact(intensities):
     """
     Introduces a blip in the given intensity values. Five intensity values
     roughly halfway into the sequence are skewed slightly downward.
-    
+
     :param intensities: the intensity values
     """
     start = int(len(intensities) / 2) + _random_int(-2, 2)
