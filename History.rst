@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+5.1.9 / 2015-06-03
+------------------
+* The REST client BreastPathology receptor_status is a list.
+
 5.1.8 / 2015-05-26
 ------------------
 * The REST client SarcomaPathology necrosis_pct field is renamed
