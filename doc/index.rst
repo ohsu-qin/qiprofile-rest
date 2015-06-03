@@ -41,15 +41,28 @@ Usage
 
        qirest
 
-   In order to start the server in development mode, use the ``--development``
-   option::
+   Alternatively, the server can be started in development mode with the
+   ``--development`` option::
    
         qirest --development
+
+
+
+4. The data model is described in the `REST client`_ documentation.
+   The REST API is described in the `Eve Features`_ documentation. For
+   example, the following command returns the JSON list of all subjects
+   for a server running on the local machine::
+   
+       curl -i http://localhost:5000/subject
 
 
 ***********
 Development
 ***********
+
+Download the source by cloning the `source repository`_::
+
+    git clone https://github.com/ohsu-qin/qiprofile-rest.git
 
 Testing is performed with the nose_ package, which must be installed separately.
 
@@ -62,15 +75,19 @@ to GitHub. Documentation can be generated locally as follows:
 
       make html
 
+A sample database can be created by running the following command in the local
+``qiprofile-rest`` project directory::
+
+    ./qiprofile_rest/test/helpers/seed.py
+
 ---------
 
 .. container:: copyright
 
-  Copyright (C) 2014 Oregon Health & Science University `Knight Cancer Institute`_.
-  All rights reserved.
-
 
 .. Targets:
+
+.. _Eve Features: http://python-eve.org/features.html
 
 .. _Knight Cancer Institute: http://www.ohsu.edu/xd/health/services/cancer
 
@@ -81,6 +98,10 @@ to GitHub. Documentation can be generated locally as follows:
 .. _pip: https://pypi.python.org/pypi/pip
 
 .. _Python: http://www.python.org
+
+.. _source repository: https://github.com/ohsu-qin/qiprofile-rest
+
+.. _REST client: qiprofile-rest-client.readthedocs.org/en/latest/
 
 .. _QuIP: https://github.com/ohsu-qin/qiprofile
 
