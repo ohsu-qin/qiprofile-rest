@@ -13,15 +13,18 @@ from qiutil.file import splitexts
 from qiprofile_rest_client.model.subject import Subject
 from qiprofile_rest_client.model.imaging import (
   Session, SessionDetail, Modeling, ModelingProtocol, Scan, ScanProtocol,
-  Registration, RegistrationProtocol, LabelMap, Volume)
+  Registration, RegistrationProtocol, LabelMap, Volume
+)
 from qiprofile_rest_client.model.uom import (Measurement, Weight)
 from qiprofile_rest_client.model.clinical import (
   Treatment, Drug, Dosage, Biopsy, Surgery, Assessment, GenericEvaluation,
-  TNM, BreastPathology, BreastReceptorStatus, HormoneReceptorStatus,
-  BreastGeneticExpression, NormalizedAssay, ModifiedBloomRichardsonGrade,
-  SarcomaPathology, FNCLCCGrade, NecrosisPercentValue, NecrosisPercentRange)
+  TNM, BreastPathology, HormoneReceptorStatus, BreastGeneticExpression,
+  NormalizedAssay, ModifiedBloomRichardsonGrade, SarcomaPathology,
+  FNCLCCGrade, NecrosisPercentValue, NecrosisPercentRange
+)
 
 PROJECT = 'QIN_Test'
+
 
 
 class Collection(object):
@@ -29,6 +32,39 @@ class Collection(object):
         self.name = name
         self.visit_count = visit_count
         self.volume_count = volume_count
+
+    def create_grade(self, **opts):
+        raise NotImplementedError("Subclass responsibility")
+
+    def create_tnm(self, **opts):
+        # The tumor type-specific grade.
+        grade = self.create_grade()
+        # The tumor size.
+        tumor_size_max = TNM.Size.tumor_size_choices(self.name)[-1]
+        tumor_size = _random_int(1, tumor_size_max)
+        suffix_choices = TNM.Size.suffix_choices(self.name)
+        suffix_ndx = _random_int(-1, len(suffix_choices) - 1)
+        if suffix_ndx < 0:
+            suffix = None
+        else:
+            suffix = suffix_choices[suffix_ndx]
+        size_opts = {k: opts[k] for k in TNM.Size._fields.iteritems()
+                     if k in opts}
+        size = TNM.Size(**size_opts)
+        # The remaining TNM fields.
+        lymph_status_max = TNM.lymph_status_choices(self.name)[-1]
+        lymph_status = _random_int(0, lymph_status_max)
+        metastasis = _random_boolean()
+        invasion = _random_boolean()
+        # The TNM {attribute: value} dictionary.
+        values = dict(tumor_type=self.name, grade=grade, size=size,
+                      lymph_status=lymph_status, metastasis=metastasis,
+                      lymphatic_vessel_invasion=invasion)
+        # The options override the random values.
+        values.update(opts)
+
+        return TNM(**values)
+
 
 
 class Breast(Collection):
@@ -52,24 +88,30 @@ class Breast(Collection):
                                      mitotic_count=mitotic_count)
 
     def create_pathology(self, **opts):
-        # The TNM score.
-        tnm_opts = opts.pop('tnm', {})
-        tnm = _create_tnm(self, 'p', **tnm_opts)
+        # The TNM.
+        tnm_opts = dict(prefix='p')
+        if 'tnm' in opts:
+            tnm_opts.update(opts.pop('tnm'))
+        tnm = self.create_tnm(**tnm_opts)
 
-        # Make the breast hormone status results.
-        hormone_receptors_opts = opts.pop('hormone_receptors', {})
-        hormone_receptors = self._create_hormone_receptors(**hormone_receptors_opts)
+        # The breast hormone status result.
+        hr_opts = opts.pop('hormone_receptors', {})
+        hormone_receptors = self._create_hormone_receptors(**hr_opts)
 
-        # Make the gene expression results.
+        # The gene expression result.
         gene_expr_opts = opts.pop('genetic_expression', {})
         # If this subject is estrogen receptor-status-positive
         # and has no lymph nodes, then create an assay.
-        if hormone_receptors.estrogen.positive and not tnm.lymph_status:
+        estrogen = next((hr for hr in hormone_receptors
+                         if hr.hormone == 'estrogen'),
+                        None)
+        if estrogen and estrogen.positive and not tnm.lymph_status:
             assay_opts = opts.pop('normalized_assay', {})
             assay = self._create_normalized_assay(**assay_opts)
             gene_expr_opts['normalized_assay'] = assay
         genetic_expression = self._create_genetic_expression(**gene_expr_opts)
 
+        # The {attribute: value} dictionary.
         values = dict(tnm=tnm, hormone_receptors=hormone_receptors,
                       genetic_expression=genetic_expression)
         values.update(opts)
@@ -78,14 +120,13 @@ class Breast(Collection):
 
     def _create_hormone_receptors(self, **opts):
         # The estrogen status.
-        estrogen_opts = opts.pop('estrogen', {})
+        estrogen_opts = opts.get('estrogen', {})
         estrogen = self._create_hormone_status('estrogen', **estrogen_opts)
-
         # The progesterone status.
-        progesterone_opts = opts.pop('progesterone', {})
+        progesterone_opts = opts.get('progesterone', {})
         progesterone = self._create_hormone_status('progesterone', **progesterone_opts)
 
-        return BreastReceptorStatus(estrogen=estrogen, progesterone=progesterone)
+        return [estrogen, progesterone]
 
     def _create_genetic_expression(self, **opts):
         # HER2 NEU IHC is one of 0, 1, 2, 3.
@@ -104,17 +145,21 @@ class Breast(Collection):
         return BreastGeneticExpression(**values)
 
     def _create_hormone_status(self, hormone, **opts):
-        opts['hormone'] = hormone
-        positive = _random_boolean()
-        quick_score = _random_int(0, 8)
-        intensity = _random_int(0, 100)
-        values = dict(positive=positive, quick_score=quick_score,
-                      intensity=intensity)
+        # Make the default {attribute: value} dictionary.
+        values = dict(
+            hormone=hormone,
+            positive =_random_boolean(),
+            quick_score=_random_int(0, 8),
+            intensity=_random_int(0, 100)
+        )
+        # Override the defaults.
         values.update(opts)
-
+        
+        # Return the new receptor status.
         return HormoneReceptorStatus(**values)
 
     def _create_normalized_assay(self, **opts):
+        # Make the default {attribute: value} dictionary.
         gstm1 = _random_int(0, 15)
         cd68 = _random_int(0, 15)
         bag1 = _random_int(0, 15)
@@ -125,8 +170,10 @@ class Breast(Collection):
         groups = dict(her2=her2, estrogen=estrogen,
                       proliferation=proliferation, invasion=invasion)
         values = dict(gstm1=gstm1, cd68=cd68, bag1=bag1, **groups)
+        # Override the defaults.
         values.update(opts)
 
+        # Return the new assay.
         return NormalizedAssay(**values)
 
     def _create_HER2_group(self):
@@ -150,9 +197,9 @@ class Breast(Collection):
         ccnb1 = _random_int(0, 15)
         mybl2 = _random_int(0, 15)
 
-        return NormalizedAssay.Proliferation(ki67=ki67, stk15=stk15,
-                                             survivin=survivin, ccnb1=ccnb1,
-                                             mybl2=mybl2)
+        return NormalizedAssay.Proliferation(
+            ki67=ki67, stk15=stk15, survivin=survivin, ccnb1=ccnb1, mybl2=mybl2
+        )
 
     def _create_invasion_group(self):
         mmp11 = _random_int(0, 15)
@@ -184,12 +231,13 @@ class Sarcoma(Collection):
                            mitotic_count=mitotic_count, necrosis=necrosis)
 
     def create_pathology(self, **opts):
-        # The TNM score.
-        tnm = _create_tnm(self, 'p', **opts)
-
+        # The TNM.
+        tnm_opts = dict(prefix='p')
+        if 'tnm' in opts:
+            tnm_opts.update(opts.pop('tnm'))
+        tnm = self.create_tnm(**tnm_opts)
         # The tumor site.
         location = 'Thigh'
-
         # The necrosis percent is either a value or a decile range.
         if _random_boolean():
             value = _random_int(0, 100)
@@ -199,13 +247,14 @@ class Sarcoma(Collection):
             start = NecrosisPercentRange.LowerBound(value=low)
             stop = NecrosisPercentRange.UpperBound(value=low+10)
             necrosis_percent = NecrosisPercentRange(start=start, stop=stop)
-
-        # The histology
+        # The histology.
         histology = 'Fibrosarcoma'
+        values = dict(tnm=tnm, location=location,
+                      necrosis_percent=necrosis_percent,
+                      histology=histology)
+        values.update(opts)
 
-        return SarcomaPathology(tnm=tnm, location=location,
-                                necrosis_percent=necrosis_percent,
-                                histology=histology)
+        return SarcomaPathology(**values)
 
 
 COLLECTIONS = [Breast(), Sarcoma()]
@@ -382,10 +431,8 @@ def _create_subject(collection, subject_number):
     # The gender is roughly split.
     subject.gender = _choose_gender(collection)
 
-    # The initial weight is between 40 and 80 kg.
-    weight_0 = _random_int(40, 80)
     # The sessions.
-    subject.sessions = [_create_session(collection, subject, i + 1, weight_0)
+    subject.sessions = [_create_session(collection, subject, i + 1)
                 for i in range(collection.visit_count)]
 
     # The neodjuvant treatment starts a few days after the first visit.
@@ -443,19 +490,27 @@ def _create_subject(collection, subject_number):
         opts['tnm'] = dict(lymph_status=0)
     # The biopsy has a pathology report.
     biopsy_path = collection.create_pathology(**opts)
-    biopsy = Biopsy(date=biopsy_date, pathology=biopsy_path)
+    # The initial weight is between 40 and 80 kg.
+    weight = _random_int(40, 80)
+    biopsy = Biopsy(date=biopsy_date, weight=weight, pathology=biopsy_path)
 
     # The surgery has a pathology report.
     surgery_path = collection.create_pathology(**opts)
-    surgery = Surgery(date=surgery_date, pathology=surgery_path)
+    # The weight varies a bit from the initial weight with a bias towards
+    # weight loss.
+    weight += _random_int(-10, 5)
+    surgery = Surgery(date=surgery_date, weight=weight, pathology=surgery_path)
 
     # The post-surgery assessment.
     offset = _random_int(3, 13)
     assessment_date = surgery_date + timedelta(days=offset)
     # The post-surgery evaluation has a TNM.
-    assessment_tnm = _create_tnm(collection)
+    assessment_tnm = collection.create_tnm()
     evaluation = GenericEvaluation(outcomes=[assessment_tnm])
-    assessment = Assessment(date=assessment_date, evaluation=evaluation)
+    # The weight varies a bit from surgery with a bias towards gain.
+    weight += _random_int(-5, 10)
+    assessment = Assessment(date=assessment_date, weight=weight,
+                            evaluation=evaluation)
 
     # Add the encounters.
     subject.encounters = [biopsy, surgery, assessment]
@@ -499,33 +554,6 @@ def _choose_gender(collection):
         return Subject.GENDER_CHOICES[index][0]
 
 
-def _create_tnm(collection, prefix=None, **opts):
-    grade = collection.create_grade()
-
-    tumor_size_max = TNM.Size.tumor_size_choices(collection.name)[-1]
-    tumor_size = _random_int(1, tumor_size_max)
-    suffix_choices = TNM.Size.suffix_choices(collection.name)
-    suffix_ndx = _random_int(-1, len(suffix_choices) - 1)
-    if suffix_ndx < 0:
-        suffix = None
-    else:
-        suffix = suffix_choices[suffix_ndx]
-    size = TNM.Size(prefix=prefix, tumor_size=tumor_size, suffix=suffix)
-    lymph_status_max = TNM.lymph_status_choices(collection.name)[-1]
-    lymph_status = _random_int(0, lymph_status_max)
-    metastasis = _random_boolean()
-    invasion = _random_boolean()
-
-    # The value dictionary.
-    values = dict(tumor_type=collection.name, grade=grade, size=size,
-                  lymph_status=lymph_status, metastasis=metastasis,
-                  lymphatic_vessel_invasion=invasion)
-    # The options override the random values.
-    values.update(opts)
-
-    return TNM(**values)
-
-
 FXL_K_TRANS_FILE_NAME = 'fxl_k_trans.nii.gz'
 
 FXR_K_TRANS_FILE_NAME = 'fxr_k_trans.nii.gz'
@@ -539,7 +567,7 @@ TAU_I_FILE_NAME = 'tau_i_trans.nii.gz'
 COLOR_TABLE_FILE_NAME = 'etc/jet_colors.txt'
 
 
-def _create_session(collection, subject, session_number, weight_0):
+def _create_session(collection, subject, session_number):
     """
     Returns a new Session object whose detail includes the following:
     * a T1 scan with a registration
@@ -555,12 +583,8 @@ def _create_session(collection, subject, session_number, weight_0):
     detail.save()
     # The embedded session modeling objects.
     modelings = _create_modeling(subject, session_number)
-    # The weight varies a bit from the initial weight with a bias towards
-    # weight loss.
-    subject_weight = weight_0 + (_random_int(-10, 5) * (session_number - 1))
 
-    return Session(acquisition_date=date, subject_weight=subject_weight,
-                   modelings=[modelings], detail=detail)
+    return Session(acquisition_date=date, modelings=[modelings], detail=detail)
 
 
 def _create_session_detail(collection, subject, session_number):

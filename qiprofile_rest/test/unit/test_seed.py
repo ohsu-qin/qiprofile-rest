@@ -34,12 +34,12 @@ class TestSeed(object):
                          number=saved_sbj.number)
             fetched_sbj = Subject.objects.get(**query)
             self._validate_subject(fetched_sbj)
- 
+
     SESSION_CNT = dict(
         Breast=4,
         Sarcoma=3
     )
- 
+
     def _validate_subject(self, subject):
         collections = ((coll.name for coll in seed.COLLECTIONS))
         assert_in(subject.collection, collections,
@@ -103,28 +103,40 @@ class TestSeed(object):
                                          " is not kilogram") % ((subject.collection, subject.number)))
 
     def _validate_encounters(self, subject):
+        # There are three encounters.
         encounters = subject.encounters
         assert_is_not_none(encounters, "%s has no encounters" % subject)
         assert_equal(len(encounters), 3,
                      "%s Subject %d encounter count is incorrect: %d" %
                      (subject.collection, subject.number, len(encounters)))
-        biopsy = next(((enc for enc in encounters if isinstance(enc, Biopsy))),
+
+        # Each encounter has a subject weight.
+        for enc in encounters:
+            assert_is_not_none(enc.weight, "%s encounter %s is missing the"
+                                           " subject weight" % (subject, enc))
+            assert_is_instance(enc.weight, int,
+                               "%s encounter %s weight type is incorrect: %s" %
+                               (subject, enc, enc.weight.__class__))
+
+        # There is a biopsy with a pathology.
+        biopsy = next((enc for enc in encounters if isinstance(enc, Biopsy)),
                       None)
         assert_is_not_none(biopsy, "%s Subject %d is missing a biopsy" %
                                    (subject.collection, subject.number))
         self._validate_pathology(subject, biopsy.pathology)
-        
+
         # There is a surgery with a pathology.
-        surgery = next(((enc for enc in encounters if isinstance(enc, Surgery))),
+        surgery = next((enc for enc in encounters if isinstance(enc, Surgery)),
                        None)
         assert_is_not_none(surgery, "%s Subject %d is missing a surgery" %
                                      (subject.collection, subject.number))
         assert_is_not_none(surgery.pathology,
                      "%s surgery is missing a pathology report" % subject)
         self._validate_pathology(subject, surgery.pathology)
-        
+
         # There is a post-treatment TNM.
-        post_trt = next(((enc for enc in encounters if isinstance(enc, Assessment))),
+        post_trt = next((enc for enc in encounters
+                         if isinstance(enc, Assessment)),
                         None)
         assert_is_not_none(post_trt, "%s Subject %d is missing an assessment" %
                                      (subject.collection, subject.number))
@@ -138,7 +150,7 @@ class TestSeed(object):
                         "%s post-treatment outcomes count is incorrect" % subject)
         post_trt_tnm = post_trt.evaluation.outcomes[0]
         self._validate_tnm(subject, post_trt_tnm)
-        
+
     def _validate_pathology(self, subject, pathology):
         assert_is_not_none(pathology, "%s is missing a pathology report" %
                                       subject)
@@ -148,7 +160,7 @@ class TestSeed(object):
             self._validate_breast_pathology(subject, pathology)
         elif subject.collection == 'Sarcoma':
             self._validate_sarcoma_pathology(subject, pathology)
-        
+
     def _validate_tnm(self, subject, tnm):
         assert_is_not_none(tnm, "%s is missing a TNM" % subject)
         assert_is_not_none(tnm.tumor_type,
@@ -163,14 +175,18 @@ class TestSeed(object):
                            "%s TNM is missing the grade" % subject)
         assert_is_not_none(tnm.metastasis,
                            "%s TNM is missing the grade" % subject)
-        
+
     def _validate_breast_pathology(self, subject, pathology):
-        assert_is_not_none(pathology.hormone_receptors.estrogen,
-                           "%s pathology report is missing an"
-                           " estrogen status" % subject)
-        assert_is_not_none(pathology.hormone_receptors.progesterone,
-                           "%s pathology report is missing a"
-                           " progesterone status" % subject)
+        estrogen = next((hr for hr in pathology.hormone_receptors
+                         if hr.hormone == 'estrogen'),
+                        None)
+        assert_is_not_none(estrogen, "%s pathology report is missing"
+                                     " an estrogen status" % subject)
+        progesterone = next((hr for hr in pathology.hormone_receptors
+                             if hr.hormone == 'progesterone'),
+                            None)
+        assert_is_not_none(progesterone, "%s pathology report is missing a"
+                                         " progesterone status" % subject)
         assert_is_not_none(pathology.genetic_expression.her2_neu_ihc,
                            "%s pathology report is missing a"
                            " HER2 NEU IHC status" % subject)
@@ -182,13 +198,13 @@ class TestSeed(object):
                            " Ki67 status" % subject)
         # The first breast subject has value overrides.
         if subject.number == 1:
-            assert_true(pathology.hormone_receptors.estrogen.positive,
-                        "The first Breast subject is not estrogen-receptor-positive")
-            assert_equal(pathology.tnm.lymph_status, 0, "The first Breast subject"
-                                                   " lymph status is incorrect")
+            assert_true(estrogen.positive, "The first Breast subject is not"
+                                           " estrogen-receptor-positive")
+            assert_equal(pathology.tnm.lymph_status, 0,
+                         "The first Breast subject lymph status is incorrect")
         # A subject who is estrogen-receptor-positive and has no lymph nodes
         # has a normalized assay.
-        if pathology.hormone_receptors.estrogen.positive and not pathology.tnm.lymph_status:
+        if estrogen.positive and not pathology.tnm.lymph_status:
             assay = pathology.genetic_expression.normalized_assay
             assert_is_not_none(assay, "%s pathology report with HER2"
                                       " positive and no lymph nodes is missing"
@@ -209,13 +225,13 @@ class TestSeed(object):
                                                " normalized assay is missing"
                                                " the estrogen group" % subject)
             assert_is_not_none(assay.proliferation, "%s pathology report"
-                                                    " normalized assay is missing"
-                                                    " the proliferation group" %
-                                                    subject)
+                                                    " normalized assay is"
+                                                    " missing the proliferation"
+                                                    " group" % subject)
             assert_is_not_none(assay.invasion, "%s pathology report"
                                                " normalized assay is missing"
                                                " the invasion group" % subject)
-        
+
     def _validate_sarcoma_pathology(self, subject, pathology):
         assert_is_not_none(pathology.location,
                            "%s pathology report is missing a tumor location" % subject)
@@ -238,15 +254,9 @@ class TestSeed(object):
         assert_is_instance(session.acquisition_date, datetime,
                            "%s session %d acquisition date type is incorrect: %s" %
                            (subject, session.number, session.acquisition_date.__class__))
-        assert_is_not_none(session.subject_weight,
-                           "%s session %d is missing the subject weight" %
-                           (subject, session.number))
-        assert_is_instance(session.subject_weight, int,
-                           "%s session %d subject weight type is incorrect: %s" %
-                           (subject, session.number, session.subject_weight.__class__))
         self._validate_modeling(subject, session)
         self._validate_session_detail(subject, session)
-    
+
     def _validate_modeling(self, subject, session):
         # The registration is modeled.
         assert_equal(len(session.modelings), 1,
@@ -262,7 +272,7 @@ class TestSeed(object):
         assert_is_not_none(modeling.source,
                            "%s session %d modeling %s is missing the source" %
                            (subject, session.number, modeling.resource))
-        
+
         # Validate the modeling result.
         for param in MODELING_RESULT_PARAMS:
             value = modeling.result[param]
@@ -275,7 +285,7 @@ class TestSeed(object):
             assert_is_not_none(value.filename,
                                "%s Subject %d modeling %s is missing a %s filename" %
                                (subject.collection, subject.number, modeling.resource, param))
-        
+
         # The delta Ktrans result has an overlay.
         label_map = modeling.result['delta_k_trans'].label_map
         assert_is_not_none(label_map,
