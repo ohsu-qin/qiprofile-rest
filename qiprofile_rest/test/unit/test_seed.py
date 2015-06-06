@@ -168,13 +168,17 @@ class TestSeed(object):
         assert_is_not_none(tnm.grade,
                            "%s TNM is missing the grade" % subject)
         assert_is_not_none(tnm.size,
-                           "%s TNM is missing the grade" % subject)
+                           "%s TNM is missing the composite size object" %
+                           subject)
+        assert_is_not_none(tnm.size.tumor_size,
+                           "%s TNM is missing the size score" % subject)
         assert_is_not_none(tnm.lymph_status,
-                           "%s TNM is missing the grade" % subject)
+                           "%s TNM is missing the lymph status" % subject)
         assert_is_not_none(tnm.lymphatic_vessel_invasion,
-                           "%s TNM is missing the grade" % subject)
+                           "%s TNM is missing the lymphati vessel invasion"
+                           % subject)
         assert_is_not_none(tnm.metastasis,
-                           "%s TNM is missing the grade" % subject)
+                           "%s TNM is missing the metastasis" % subject)
 
     def _validate_breast_pathology(self, subject, pathology):
         estrogen = next((hr for hr in pathology.hormone_receptors

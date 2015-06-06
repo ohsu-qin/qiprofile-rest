@@ -19,7 +19,7 @@ from qiprofile_rest_client.model.uom import (Measurement, Weight)
 from qiprofile_rest_client.model.clinical import (
   Treatment, Drug, Dosage, Biopsy, Surgery, Assessment, GenericEvaluation,
   TNM, BreastPathology, HormoneReceptorStatus, BreastGeneticExpression,
-  NormalizedAssay, ModifiedBloomRichardsonGrade, SarcomaPathology,
+  BreastNormalizedAssay, ModifiedBloomRichardsonGrade, SarcomaPathology,
   FNCLCCGrade, NecrosisPercentValue, NecrosisPercentRange
 )
 
@@ -39,6 +39,7 @@ class Collection(object):
     def create_tnm(self, **opts):
         # The tumor type-specific grade.
         grade = self.create_grade()
+
         # The tumor size.
         tumor_size_max = TNM.Size.tumor_size_choices(self.name)[-1]
         tumor_size = _random_int(1, tumor_size_max)
@@ -48,14 +49,18 @@ class Collection(object):
             suffix = None
         else:
             suffix = suffix_choices[suffix_ndx]
-        size_opts = {k: opts[k] for k in TNM.Size._fields.iteritems()
+        size_values = dict(grade=grade, tumor_size=tumor_size)
+        size_opts = {k: opts[k] for k in TNM.Size._fields.iterkeys()
                      if k in opts}
-        size = TNM.Size(**size_opts)
+        size_values.update(size_opts)
+        size = TNM.Size(**size_values)
+
         # The remaining TNM fields.
         lymph_status_max = TNM.lymph_status_choices(self.name)[-1]
         lymph_status = _random_int(0, lymph_status_max)
         metastasis = _random_boolean()
         invasion = _random_boolean()
+
         # The TNM {attribute: value} dictionary.
         values = dict(tumor_type=self.name, grade=grade, size=size,
                       lymph_status=lymph_status, metastasis=metastasis,
@@ -174,13 +179,13 @@ class Breast(Collection):
         values.update(opts)
 
         # Return the new assay.
-        return NormalizedAssay(**values)
+        return BreastNormalizedAssay(**values)
 
     def _create_HER2_group(self):
         grb7 = _random_int(0, 15)
         her2 = _random_int(0, 15)
 
-        return NormalizedAssay.HER2(grb7=grb7, her2=her2)
+        return BreastNormalizedAssay.HER2(grb7=grb7, her2=her2)
 
     def _create_estrogen_group(self):
         er = _random_int(0, 15)
@@ -188,7 +193,7 @@ class Breast(Collection):
         bcl2 = _random_int(0, 15)
         scube2 = _random_int(0, 15)
 
-        return NormalizedAssay.Estrogen(er=er, pgr=pgr, bcl2=bcl2, scube2=scube2)
+        return BreastNormalizedAssay.Estrogen(er=er, pgr=pgr, bcl2=bcl2, scube2=scube2)
 
     def _create_proliferation_group(self):
         ki67 = _random_int(0, 15)
@@ -197,7 +202,7 @@ class Breast(Collection):
         ccnb1 = _random_int(0, 15)
         mybl2 = _random_int(0, 15)
 
-        return NormalizedAssay.Proliferation(
+        return BreastNormalizedAssay.Proliferation(
             ki67=ki67, stk15=stk15, survivin=survivin, ccnb1=ccnb1, mybl2=mybl2
         )
 
@@ -205,7 +210,7 @@ class Breast(Collection):
         mmp11 = _random_int(0, 15)
         ctsl2 = _random_int(0, 15)
 
-        return NormalizedAssay.Invasion(mmp11=mmp11, ctsl2=ctsl2)
+        return BreastNormalizedAssay.Invasion(mmp11=mmp11, ctsl2=ctsl2)
 
 
 class Sarcoma(Collection):
