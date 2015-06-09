@@ -437,15 +437,15 @@ def _create_subject(collection, subject_number):
     subject.gender = _choose_gender(collection)
 
     # The sessions.
-    subject.sessions = [_create_session(collection, subject, i + 1)
+    sessions = [_create_session(collection, subject, i + 1)
                 for i in range(collection.visit_count)]
 
     # The neodjuvant treatment starts a few days after the first visit.
     offset = _random_int(0, 3)
-    neo_rx_begin = subject.sessions[0].acquisition_date + timedelta(days=offset)
+    neo_rx_begin = sessions[0].date + timedelta(days=offset)
     # The neodjuvant treatment ends a few days before the last visit.
     offset = _random_int(0, 3)
-    neo_rx_end = subject.sessions[-1].acquisition_date - timedelta(days=offset)
+    neo_rx_end = sessions[-1].date - timedelta(days=offset)
     neo_rx = Treatment(treatment_type='Neoadjuvant', start_date=neo_rx_begin,
                        end_date=neo_rx_end)
 
@@ -467,7 +467,7 @@ def _create_subject(collection, subject_number):
 
     # The primary treatment (surgery) is a few days after the last scan.
     offset = _random_int(0, 10)
-    surgery_date = subject.sessions[-1].acquisition_date + timedelta(days=offset)
+    surgery_date = sessions[-1].date + timedelta(days=offset)
     primary_rx = Treatment(treatment_type='Primary', start_date=surgery_date,
                            end_date=surgery_date)
 
@@ -485,7 +485,7 @@ def _create_subject(collection, subject_number):
 
     # The biopsy is a few days before the first visit.
     offset = _random_int(0, 10)
-    biopsy_date = subject.sessions[0].acquisition_date - timedelta(days=offset)
+    biopsy_date = sessions[0].date - timedelta(days=offset)
 
     # Force the first breast patient to be free of lymph nodes,
     # since we want at least one patient with a normalized assay.
@@ -518,7 +518,7 @@ def _create_subject(collection, subject_number):
                             evaluation=evaluation)
 
     # Add the encounters.
-    subject.encounters = [biopsy, surgery, assessment]
+    subject.encounters = sessions + [biopsy, surgery, assessment]
 
     # Save the subject.
     subject.save()
@@ -589,7 +589,7 @@ def _create_session(collection, subject, session_number):
     # The embedded session modeling objects.
     modelings = _create_modeling(subject, session_number)
 
-    return Session(acquisition_date=date, modelings=[modelings], detail=detail)
+    return Session(date=date, modelings=[modelings], detail=detail)
 
 
 def _create_session_detail(collection, subject, session_number):

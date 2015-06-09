@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+5.2.1 / 2015-06-09
+------------------
+* Session is an encounter.
+
 5.1.9 / 2015-06-03
 ------------------
 * The REST client BreastPathology receptor_status is a list.

@@ -54,8 +54,8 @@ class TestSeed(object):
     def _validate_clincal_data(self, subject):
         # There are three treatments.
         self._validate_treatments(subject)
-        # Validate the encounters.
-        self._validate_encounters(subject)
+        # Validate the clinical encounters.
+        self._validate_clinical_encounters(subject)
 
     def _validate_treatments(self, subject):
         # There are three treatments.
@@ -102,16 +102,16 @@ class TestSeed(object):
             assert_equal(per_unit.scale, 'k', ("%s Subject %d neodjuvant drug per unit scale" +
                                          " is not kilogram") % ((subject.collection, subject.number)))
 
-    def _validate_encounters(self, subject):
-        # There are three encounters.
-        encounters = subject.encounters
-        assert_is_not_none(encounters, "%s has no encounters" % subject)
-        assert_equal(len(encounters), 3,
+    def _validate_clinical_encounters(self, subject):
+        # There are three clinical encounters.
+        cln_encs = list(subject.clinical_encounters)
+        assert_is_not_none(cln_encs, "%s has no encounters" % subject)
+        assert_equal(len(cln_encs), 3,
                      "%s Subject %d encounter count is incorrect: %d" %
-                     (subject.collection, subject.number, len(encounters)))
+                     (subject.collection, subject.number, len(cln_encs)))
 
         # Each encounter has a subject weight.
-        for enc in encounters:
+        for enc in cln_encs:
             assert_is_not_none(enc.weight, "%s encounter %s is missing the"
                                            " subject weight" % (subject, enc))
             assert_is_instance(enc.weight, int,
@@ -119,14 +119,14 @@ class TestSeed(object):
                                (subject, enc, enc.weight.__class__))
 
         # There is a biopsy with a pathology.
-        biopsy = next((enc for enc in encounters if isinstance(enc, Biopsy)),
+        biopsy = next((enc for enc in cln_encs if isinstance(enc, Biopsy)),
                       None)
         assert_is_not_none(biopsy, "%s Subject %d is missing a biopsy" %
                                    (subject.collection, subject.number))
         self._validate_pathology(subject, biopsy.pathology)
 
         # There is a surgery with a pathology.
-        surgery = next((enc for enc in encounters if isinstance(enc, Surgery)),
+        surgery = next((enc for enc in cln_encs if isinstance(enc, Surgery)),
                        None)
         assert_is_not_none(surgery, "%s Subject %d is missing a surgery" %
                                      (subject.collection, subject.number))
@@ -135,7 +135,7 @@ class TestSeed(object):
         self._validate_pathology(subject, surgery.pathology)
 
         # There is a post-treatment TNM.
-        post_trt = next((enc for enc in encounters
+        post_trt = next((enc for enc in cln_encs
                          if isinstance(enc, Assessment)),
                         None)
         assert_is_not_none(post_trt, "%s Subject %d is missing an assessment" %
@@ -241,7 +241,7 @@ class TestSeed(object):
                            "%s pathology report is missing a tumor location" % subject)
 
     def _validate_sessions(self, subject):
-        sessions = subject.sessions
+        sessions = list(subject.sessions)
         assert_is_not_none(sessions, "%s has no sessions" % subject)
         session_cnt = TestSeed.SESSION_CNT[subject.collection]
         assert_equal(len(sessions), session_cnt, "%s session count is incorrect: %d" %
@@ -252,12 +252,12 @@ class TestSeed(object):
             self._validate_session(subject, session)
 
     def _validate_session(self, subject, session):
-        assert_is_not_none(session.acquisition_date,
+        assert_is_not_none(session.date,
                            "%s session %d is missing the acquisition date" %
                            (subject, session.number))
-        assert_is_instance(session.acquisition_date, datetime,
+        assert_is_instance(session.date, datetime,
                            "%s session %d acquisition date type is incorrect: %s" %
-                           (subject, session.number, session.acquisition_date.__class__))
+                           (subject, session.number, session.date.__class__))
         self._validate_modeling(subject, session)
         self._validate_session_detail(subject, session)
 
