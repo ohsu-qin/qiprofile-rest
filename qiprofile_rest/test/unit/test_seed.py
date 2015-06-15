@@ -87,20 +87,6 @@ class TestSeed(object):
             amount = dosage.amount
             assert_is_not_none(amount, ("%s Subject %d is missing a neodjuvant drug" +
                                       " dosage amount") % (subject.collection, subject.number))
-            unit = amount.unit
-            assert_is_not_none(unit, ("%s Subject %d is missing a neodjuvant drug" +
-                                      " dosage unit") % (subject.collection, subject.number))
-            assert_is_instance(unit, Weight, ("%s Subject %d neodjuvant drug dosage" +
-                                                  " unit is incorrect") %
-                                                  (subject.collection, subject.number))
-            per_unit = amount.per_unit
-            assert_is_not_none(per_unit, ("%s Subject %d is missing a neodjuvant drug" +
-                                          " dosage per unit") % (subject.collection, subject.number))
-            assert_is_instance(per_unit, Weight, ("%s Subject %d neodjuvant drug" +
-                                                      " dosage per unit is incorrect") %
-                                                      (subject.collection, subject.number))
-            assert_equal(per_unit.scale, 'k', ("%s Subject %d neodjuvant drug per unit scale" +
-                                         " is not kilogram") % ((subject.collection, subject.number)))
 
     def _validate_clinical_encounters(self, subject):
         # There are three clinical encounters.

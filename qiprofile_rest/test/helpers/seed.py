@@ -15,7 +15,6 @@ from qiprofile_rest_client.model.imaging import (
   Session, SessionDetail, Modeling, ModelingProtocol, Scan, ScanProtocol,
   Registration, RegistrationProtocol, LabelMap, Volume
 )
-from qiprofile_rest_client.model.uom import (Measurement, Weight)
 from qiprofile_rest_client.model.clinical import (
   Treatment, Drug, Dosage, Biopsy, Surgery, Assessment, GenericEvaluation,
   TNM, BreastPathology, HormoneReceptorStatus, BreastGeneticExpression,
@@ -453,15 +452,13 @@ def _create_subject(collection, subject_number):
     if isinstance(collection, Breast):
         # trastuzumab.
         trast = Drug(name='trastuzumab')
-        amt = .002 * subject.number
-        trast_amt = Measurement(amount=amt, unit=Weight(), per_unit=Weight(scale='k'))
-        trast_dosage = Dosage(agent=trast, amount=trast_amt)
+        amount = .002 * subject.number
+        trast_dosage = Dosage(agent=trast, amount=amount)
 
         # pertuzumab.
         pert = Drug(name='pertuzumab')
-        amt = .006 * subject.number
-        pert_amt = Measurement(amount=amt, unit=Weight(), per_unit=Weight(scale='k'))
-        pert_dosage = Dosage(agent=pert, amount=pert_amt)
+        amount = .006 * subject.number
+        pert_dosage = Dosage(agent=pert, amount=amount)
 
         neo_rx.dosages = [trast_dosage, pert_dosage]
 
