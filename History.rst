@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+5.2.2 / 2015-06-15
+------------------
+* Dosage amount is an integer.
+
 5.2.1 / 2015-06-09
 ------------------
 * Session is an encounter.
