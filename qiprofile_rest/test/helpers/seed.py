@@ -19,7 +19,8 @@ from qiprofile_rest_client.model.clinical import (
   Treatment, Drug, Dosage, Biopsy, Surgery, Assessment, GenericEvaluation,
   TNM, BreastPathology, HormoneReceptorStatus, BreastGeneticExpression,
   BreastNormalizedAssay, ModifiedBloomRichardsonGrade, SarcomaPathology,
-  FNCLCCGrade, NecrosisPercentValue, NecrosisPercentRange
+  FNCLCCGrade, NecrosisPercentValue, NecrosisPercentRange,
+  necrosis_percent_as_score
 )
 
 PROJECT = 'QIN_Test'
@@ -225,23 +226,23 @@ class Sarcoma(Collection):
 
     def create_grade(self):
         """
+        Makes the Sarcoma FNCLCC grade object.
+        The grade *necrosis_score* attribute is not set, since it
+        is calculated later from the *necrosis_percent* attribute.
+        
         :return: the FNCLCC grade
         """
         differentiation = _random_int(1, 3)
         mitotic_count = _random_int(1, 3)
-        necrosis = _random_int(0, 2)
 
         return FNCLCCGrade(differentiation=differentiation,
-                           mitotic_count=mitotic_count, necrosis=necrosis)
+                           mitotic_count=mitotic_count)
 
     def create_pathology(self, **opts):
-        # The TNM.
-        tnm_opts = dict(prefix='p')
-        if 'tnm' in opts:
-            tnm_opts.update(opts.pop('tnm'))
-        tnm = self.create_tnm(**tnm_opts)
         # The tumor site.
         location = 'Thigh'
+        # The histology.
+        histology = 'Fibrosarcoma'
         # The necrosis percent is either a value or a decile range.
         if _random_boolean():
             value = _random_int(0, 100)
@@ -251,8 +252,14 @@ class Sarcoma(Collection):
             start = NecrosisPercentRange.LowerBound(value=low)
             stop = NecrosisPercentRange.UpperBound(value=low+10)
             necrosis_percent = NecrosisPercentRange(start=start, stop=stop)
-        # The histology.
-        histology = 'Fibrosarcoma'
+        # The TNM.
+        tnm_opts = dict(prefix='p')
+        if 'tnm' in opts:
+            tnm_opts.update(opts.pop('tnm'))
+            tnm_opts.update(necrosis_score=necrosis_score)
+        tnm = self.create_tnm(**tnm_opts)
+        # Calculate the necrosis score.
+        tnm.grade.necrosis_score = necrosis_percent_as_score(necrosis_percent)
         values = dict(tnm=tnm, location=location,
                       necrosis_percent=necrosis_percent,
                       histology=histology)
@@ -448,18 +455,18 @@ def _create_subject(collection, subject_number):
     neo_rx = Treatment(treatment_type='Neoadjuvant', start_date=neo_rx_begin,
                        end_date=neo_rx_end)
 
-    # Breast patients have neodjuvant drugs.
+    # The sample seed Breast patients have neodjuvant drugs.
     if isinstance(collection, Breast):
         # trastuzumab.
         trast = Drug(name='trastuzumab')
-        amount = .002 * subject.number
-        trast_dosage = Dosage(agent=trast, amount=amount)
-
+        trast_amt = _random_float(20, 30)
+        trast_dosage = Dosage(agent=trast, start_date=neo_rx_begin,
+                              duration=14, amount=trast_amt)
         # pertuzumab.
         pert = Drug(name='pertuzumab')
-        amount = .006 * subject.number
-        pert_dosage = Dosage(agent=pert, amount=amount)
-
+        pert_amt = _random_float(40, 50)
+        pert_dosage = Dosage(agent=pert, start_date=neo_rx_begin,
+                             duration=14, amount=pert_amt)
         neo_rx.dosages = [trast_dosage, pert_dosage]
 
     # The primary treatment (surgery) is a few days after the last scan.
@@ -835,7 +842,16 @@ def _random_int(low, high):
     :param high: the inclusive maximum value
     :return: a random integer in the inclusive [low, high] range
     """
-    return int(Decimal(random.random() * (high - low)).to_integral_value()) + low
+    return int(_random_float(low, high))
+
+
+def _random_float(low, high):
+    """
+    :param low: the inclusive minimum value
+    :param high: the inclusive maximum value
+    :return: a random float in the inclusive [low, high] range
+    """
+    return (random.random() * (high - low)) + low
 
 
 def _random_boolean():
