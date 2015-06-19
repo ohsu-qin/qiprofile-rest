@@ -1,6 +1,11 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+5.2.3 / 2015-06-18
+------------------
+* No, dosage amount is now a float.
+* Sarcoma grade necrosis was renamed to necrosis_score.
+
 5.2.2 / 2015-06-15
 ------------------
 * Dosage amount is an integer.
