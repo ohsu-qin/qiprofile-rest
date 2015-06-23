@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+5.2.4 / 2015-06-23
+------------------
+* Use BreastSurgery in the seed utility.
+
 5.2.3 / 2015-06-18
 ------------------
 * No, dosage amount is now a float.
