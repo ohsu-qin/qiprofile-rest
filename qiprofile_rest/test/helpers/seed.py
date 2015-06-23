@@ -16,15 +16,14 @@ from qiprofile_rest_client.model.imaging import (
   Registration, RegistrationProtocol, LabelMap, Volume
 )
 from qiprofile_rest_client.model.clinical import (
-  Treatment, Drug, Dosage, Biopsy, Surgery, Assessment, GenericEvaluation,
-  TNM, BreastPathology, HormoneReceptorStatus, BreastGeneticExpression,
-  BreastNormalizedAssay, ModifiedBloomRichardsonGrade, SarcomaPathology,
-  FNCLCCGrade, NecrosisPercentValue, NecrosisPercentRange,
+  Treatment, Drug, Dosage, Biopsy, Surgery, BreastSurgery, Assessment,
+  GenericEvaluation, TNM, BreastPathology, HormoneReceptorStatus,
+  BreastGeneticExpression, BreastNormalizedAssay, ModifiedBloomRichardsonGrade,
+  SarcomaPathology, FNCLCCGrade, NecrosisPercentValue, NecrosisPercentRange,
   necrosis_percent_as_score
 )
 
 PROJECT = 'QIN_Test'
-
 
 
 class Collection(object):
@@ -508,7 +507,14 @@ def _create_subject(collection, subject_number):
     # The weight varies a bit from the initial weight with a bias towards
     # weight loss.
     weight += _random_int(-10, 5)
-    surgery = Surgery(date=surgery_date, weight=weight, pathology=surgery_path)
+    # Breast surgery has a surgery type.
+    if isinstance(collection, Breast):
+        surgery = BreastSurgery(date=surgery_date, weight=weight,
+                                surgery_type='Lumpectomy',
+                                pathology=surgery_path)
+    else:
+        surgery = Surgery(date=surgery_date, weight=weight,
+                          pathology=surgery_path)
 
     # The post-surgery assessment.
     offset = _random_int(3, 13)
