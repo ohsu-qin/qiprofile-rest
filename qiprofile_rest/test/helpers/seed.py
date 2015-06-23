@@ -562,11 +562,11 @@ def _choose_ethnicity():
 
 def _choose_gender(collection):
     if collection.name == 'Breast':
-        return 'F'
+        return 'Female'
     else:
         # Half of the sarcoma subjects are male, half female.
         index = _random_int(0, 1)
-        return Subject.GENDER_CHOICES[index][0]
+        return Subject.GENDER_CHOICES[index]
 
 
 FXL_K_TRANS_FILE_NAME = 'fxl_k_trans.nii.gz'
