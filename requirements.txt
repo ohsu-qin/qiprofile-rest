@@ -1,7 +1,6 @@
 bunch==1.0.1
-Eve==0.3
-Eve-Mongoengine==0.0.5
-mongoengine==0.8.7
+Eve-Mongoengine==0.0.9
 pytz==2014.3
 qiutil==2.2.5
-qiprofile_rest_client==5.4.5
+qiprofile_rest_client==5.5.2
+
