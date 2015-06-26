@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+5.3.1 / 2015-06-25
+------------------
+* Upgrade to Mongo 3.
+
 5.2.4 / 2015-06-23
 ------------------
 * Use BreastSurgery in the seed utility.

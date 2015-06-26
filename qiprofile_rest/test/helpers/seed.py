@@ -10,6 +10,7 @@ from bunch import Bunch
 from mongoengine import connect
 from qiutil import uid
 from qiutil.file import splitexts
+from qiprofile_rest_client.helpers import database
 from qiprofile_rest_client.model.subject import Subject
 from qiprofile_rest_client.model.imaging import (
   Session, SessionDetail, Modeling, ModelingProtocol, Scan, ScanProtocol,
@@ -48,11 +49,11 @@ class Collection(object):
             suffix = None
         else:
             suffix = suffix_choices[suffix_ndx]
-        size_values = dict(grade=grade, tumor_size=tumor_size)
-        size_opts = {k: opts[k] for k in TNM.Size._fields.iterkeys()
+        size_content = dict(tumor_size=tumor_size)
+        size_opts = {k: opts.pop(k) for k in TNM.Size._fields.iterkeys()
                      if k in opts}
-        size_values.update(size_opts)
-        size = TNM.Size(**size_values)
+        size_content.update(size_opts)
+        size = TNM.Size(**size_content)
 
         # The remaining TNM fields.
         lymph_status_max = TNM.lymph_status_choices(self.name)[-1]
@@ -61,13 +62,13 @@ class Collection(object):
         invasion = _random_boolean()
 
         # The TNM {attribute: value} dictionary.
-        values = dict(tumor_type=self.name, grade=grade, size=size,
-                      lymph_status=lymph_status, metastasis=metastasis,
-                      lymphatic_vessel_invasion=invasion)
+        tnm_content = dict(tumor_type=self.name, grade=grade, size=size,
+                           lymph_status=lymph_status, metastasis=metastasis,
+                           lymphatic_vessel_invasion=invasion)
         # The options override the random values.
-        values.update(opts)
+        tnm_content.update(opts)
 
-        return TNM(**values)
+        return TNM(**tnm_content)
 
 
 
@@ -408,21 +409,18 @@ The incidences sum to 100.
 def _create_protocols():
     """Returns the protocols described in :const:`PROTOCOLS`."""
     # The modeling protocol.
-    bolero_defs = dict(input_parameters=MODELING_INPUT_PARAMS)
-    bolero, _ = ModelingProtocol.objects.get_or_create(
-        technique='Bolero', defaults=bolero_defs
-    )
-    scan_defs = dict(orientation='axial')
+    bolero = database.get_or_create(ModelingProtocol, dict(technique='Bolero'),
+        input_parameters=MODELING_INPUT_PARAMS)
     # The T1 scan protocol.
-    t1, _ = ScanProtocol.objects.get_or_create(scan_type='T1',
-                                               defaults=scan_defs)
+    t1 = database.get_or_create(ScanProtocol, dict(scan_type='T1'),
+                                orientation='axial')
     # The T2 scan protocol.
-    t2, _ = ScanProtocol.objects.get_or_create(scan_type='T2',
-                                               defaults=scan_defs)
+    t2 = database.get_or_create(ScanProtocol, dict(scan_type='T2'),
+                                orientation='axial')
     # The registration protocol.
     ants_defs = dict(parameters=REG_PARAMS)
-    ants, _ = RegistrationProtocol.objects.get_or_create(technique='ANTS',
-                                                         defaults=ants_defs)
+    ants = database.get_or_create(RegistrationProtocol, dict(technique='ANTS'),
+                                  parameters=REG_PARAMS)
 
     return dict(t1=t1, t2=t2, bolero=bolero, ants=ants)
 

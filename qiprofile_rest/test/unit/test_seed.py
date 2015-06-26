@@ -2,7 +2,6 @@ from nose.tools import (assert_is_none, assert_is_instance, assert_in,
                         assert_is_not_none, assert_true, assert_equal)
 from datetime import datetime
 from mongoengine import connect
-from mongoengine.connection import get_db
 from qiprofile_rest_client.model.subject import Subject
 from qiprofile_rest_client.model.uom import Weight
 from qiprofile_rest_client.model.clinical import (Assessment, Biopsy, Surgery, Drug)
@@ -19,13 +18,12 @@ class TestSeed(object):
     at the beginning and end of execution.
     """
     def setup(self):
-        connect(db='qiprofile_test')
-        self.db = get_db()
-        self.db.connection.drop_database('qiprofile_test')
+        self._connection = connect(db='qiprofile_test')
+        self._connection.drop_database('qiprofile_test')
         self._subjects = seed.seed()
 
     def tearDown(self):
-        self.db.connection.drop_database('qiprofile_test')
+        self._connection.drop_database('qiprofile_test')
 
     def test_serialization(self):
         for saved_sbj in self._subjects:
