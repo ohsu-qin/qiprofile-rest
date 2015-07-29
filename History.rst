@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+5.4.1 / 2015-07-28
+------------------
+* Add tumors to the seed utility.
+
 5.3.1 / 2015-06-25
 ------------------
 * Upgrade to Mongo 3.
