@@ -159,6 +159,11 @@ class TestSeed(object):
                             None)
         assert_is_not_none(progesterone, "%s pathology report is missing a"
                                          " progesterone status" % subject)
+        assert_is_not_none(pathology.rcb, "%s pathology report is missing"
+                                          " a RCB status" % subject)
+        assert_is_not_none(pathology.genetic_expression,
+                           "%s pathology report is missing a genetic"
+                           " expression status" % subject)
         assert_is_not_none(pathology.genetic_expression.her2_neu_ihc,
                            "%s pathology report is missing a"
                            " HER2 NEU IHC status" % subject)

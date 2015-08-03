@@ -18,9 +18,9 @@ from qiprofile_rest_client.model.imaging import (
 )
 from qiprofile_rest_client.model.clinical import (
   Treatment, Drug, Dosage, Biopsy, Surgery, PathologyReport, TNM, TumorExtent,
-  BreastSurgery, BreastPathology, HormoneReceptorStatus, BreastGeneticExpression,
-  BreastNormalizedAssay, ModifiedBloomRichardsonGrade, SarcomaPathology,
-  FNCLCCGrade, NecrosisPercentValue, NecrosisPercentRange,
+  BreastSurgery, BreastPathology, ResidualCancerBurden, HormoneReceptorStatus,
+  BreastGeneticExpression, BreastNormalizedAssay, ModifiedBloomRichardsonGrade,
+  SarcomaPathology, FNCLCCGrade, NecrosisPercentValue, NecrosisPercentRange,
   necrosis_percent_as_score
 )
 
@@ -108,6 +108,9 @@ class Breast(Collection):
         hr_opts = opts.pop('hormone_receptors', {})
         hormone_receptors = self._create_hormone_receptors(**hr_opts)
 
+        # The RCB.
+        rcb = self._create_rcb()
+
         # The gene expression result.
         gene_expr_opts = opts.pop('genetic_expression', {})
         # If this subject is estrogen receptor-status-positive
@@ -122,7 +125,7 @@ class Breast(Collection):
         genetic_expression = self._create_genetic_expression(**gene_expr_opts)
 
         # The {attribute: value} dictionary.
-        values = dict(tnm=tnm, extent=extent,
+        values = dict(tnm=tnm, extent=extent, rcb=rcb,
                       hormone_receptors=hormone_receptors,
                       genetic_expression=genetic_expression)
         values.update(opts)
@@ -138,6 +141,15 @@ class Breast(Collection):
         progesterone = self._create_hormone_status('progesterone', **progesterone_opts)
 
         return [estrogen, progesterone]
+
+    def _create_rcb(self):
+        return ResidualCancerBurden(
+            tumor_cell_density=_random_int(0, 40),
+            dcis_cell_density=_random_int(0, 20),
+            positive_node_count=_random_int(0, 5),
+            total_node_count=_random_int(0, 20),
+            largest_nodal_metastasis_length=_random_int(0, 10)
+        )
 
     def _create_genetic_expression(self, **opts):
         # HER2 NEU IHC is one of 0, 1, 2, 3.
