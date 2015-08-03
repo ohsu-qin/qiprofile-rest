@@ -17,8 +17,8 @@ from qiprofile_rest_client.model.imaging import (
   Registration, RegistrationProtocol, LabelMap, Volume
 )
 from qiprofile_rest_client.model.clinical import (
-  Treatment, Drug, Dosage, Biopsy, Surgery, BreastSurgery, Assessment,
-  GenericEvaluation, TNM, BreastPathology, HormoneReceptorStatus,
+  Treatment, Drug, Dosage, Biopsy, Surgery, PathologyReport, TNM, TumorExtent,
+  BreastSurgery, BreastPathology, ResidualCancerBurden, HormoneReceptorStatus,
   BreastGeneticExpression, BreastNormalizedAssay, ModifiedBloomRichardsonGrade,
   SarcomaPathology, FNCLCCGrade, NecrosisPercentValue, NecrosisPercentRange,
   necrosis_percent_as_score
@@ -71,7 +71,6 @@ class Collection(object):
         return TNM(**tnm_content)
 
 
-
 class Breast(Collection):
     """
     The test Breast collection has four visits with 32 volumes each.
@@ -98,10 +97,19 @@ class Breast(Collection):
         if 'tnm' in opts:
             tnm_opts.update(opts.pop('tnm'))
         tnm = self.create_tnm(**tnm_opts)
+        
+        # The tumor extent.
+        length = _random_int(20, 25)
+        width = _random_int(10, 20)
+        depth = _random_int(5, 10)
+        extent = TumorExtent(length=length, width=width, depth=depth)
 
         # The breast hormone status result.
         hr_opts = opts.pop('hormone_receptors', {})
         hormone_receptors = self._create_hormone_receptors(**hr_opts)
+
+        # The RCB.
+        rcb = self._create_rcb()
 
         # The gene expression result.
         gene_expr_opts = opts.pop('genetic_expression', {})
@@ -117,7 +125,8 @@ class Breast(Collection):
         genetic_expression = self._create_genetic_expression(**gene_expr_opts)
 
         # The {attribute: value} dictionary.
-        values = dict(tnm=tnm, hormone_receptors=hormone_receptors,
+        values = dict(tnm=tnm, extent=extent, rcb=rcb,
+                      hormone_receptors=hormone_receptors,
                       genetic_expression=genetic_expression)
         values.update(opts)
 
@@ -132,6 +141,15 @@ class Breast(Collection):
         progesterone = self._create_hormone_status('progesterone', **progesterone_opts)
 
         return [estrogen, progesterone]
+
+    def _create_rcb(self):
+        return ResidualCancerBurden(
+            tumor_cell_density=_random_int(0, 40),
+            dcis_cell_density=_random_int(0, 20),
+            positive_node_count=_random_int(0, 5),
+            total_node_count=_random_int(0, 20),
+            largest_nodal_metastasis_length=_random_int(0, 10)
+        )
 
     def _create_genetic_expression(self, **opts):
         # HER2 NEU IHC is one of 0, 1, 2, 3.
@@ -243,6 +261,7 @@ class Sarcoma(Collection):
         location = 'Thigh'
         # The histology.
         histology = 'Fibrosarcoma'
+
         # The necrosis percent is either a value or a decile range.
         if _random_boolean():
             value = _random_int(0, 100)
@@ -252,6 +271,13 @@ class Sarcoma(Collection):
             start = NecrosisPercentRange.LowerBound(value=low)
             stop = NecrosisPercentRange.UpperBound(value=low+10)
             necrosis_percent = NecrosisPercentRange(start=start, stop=stop)
+        
+        # The tumor extent.
+        length = _random_int(20, 25)
+        width = _random_int(10, 20)
+        depth = _random_int(5, 10)
+        extent = TumorExtent(length=length, width=width, depth=depth)
+
         # The TNM.
         tnm_opts = dict(prefix='p')
         if 'tnm' in opts:
@@ -260,9 +286,8 @@ class Sarcoma(Collection):
         tnm = self.create_tnm(**tnm_opts)
         # Calculate the necrosis score.
         tnm.grade.necrosis_score = necrosis_percent_as_score(necrosis_percent)
-        values = dict(tnm=tnm, location=location,
-                      necrosis_percent=necrosis_percent,
-                      histology=histology)
+        values = dict(tnm=tnm, location=location, histology=histology,
+                      extent=extent, necrosis_percent=necrosis_percent)
         values.update(opts)
 
         return SarcomaPathology(**values)
@@ -495,15 +520,17 @@ def _create_subject(collection, subject_number):
         opts['hormone_receptors'] = dict(estrogen=dict(positive=True))
         opts['tnm'] = dict(lymph_status=0)
     # The biopsy has a pathology report.
-    biopsy_path = collection.create_pathology(**opts)
+    biopsy_tumor_path = collection.create_pathology(**opts)
+    biopsy_path = PathologyReport(tumors=[biopsy_tumor_path])
     # The initial weight is between 40 and 80 kg.
     weight = _random_int(40, 80)
     biopsy = Biopsy(date=biopsy_date, weight=weight, pathology=biopsy_path)
 
     # The surgery has a pathology report.
-    surgery_path = collection.create_pathology(**opts)
-    # The weight varies a bit from the initial weight with a bias towards
-    # weight loss.
+    surgery_tumor_path = collection.create_pathology(**opts)
+    surgery_path = PathologyReport(tumors=[surgery_tumor_path])
+    # The weight varies a bit from the initial weight with a bias
+    # towards loss.
     weight += _random_int(-10, 5)
     # Breast surgery has a surgery type.
     if isinstance(collection, Breast):
@@ -514,19 +541,8 @@ def _create_subject(collection, subject_number):
         surgery = Surgery(date=surgery_date, weight=weight,
                           pathology=surgery_path)
 
-    # The post-surgery assessment.
-    offset = _random_int(3, 13)
-    assessment_date = surgery_date + timedelta(days=offset)
-    # The post-surgery evaluation has a TNM.
-    assessment_tnm = collection.create_tnm()
-    evaluation = GenericEvaluation(outcomes=[assessment_tnm])
-    # The weight varies a bit from surgery with a bias towards gain.
-    weight += _random_int(-5, 10)
-    assessment = Assessment(date=assessment_date, weight=weight,
-                            evaluation=evaluation)
-
     # Add the encounters.
-    subject.encounters = sessions + [biopsy, surgery, assessment]
+    subject.encounters = sessions + [biopsy, surgery]
 
     # Save the subject.
     subject.save()

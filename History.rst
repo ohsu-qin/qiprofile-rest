@@ -1,6 +1,18 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+5.4.3 / 2015-08-02
+------------------
+* Bump REST client version.
+
+5.4.2 / 2015-08-02
+------------------
+* Add RCB to the seed utility.
+
+5.4.1 / 2015-07-28
+------------------
+* Add tumors to the seed utility.
+
 5.3.1 / 2015-06-25
 ------------------
 * Upgrade to Mongo 3.

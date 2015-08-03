@@ -4,7 +4,7 @@ from datetime import datetime
 from mongoengine import connect
 from qiprofile_rest_client.model.subject import Subject
 from qiprofile_rest_client.model.uom import Weight
-from qiprofile_rest_client.model.clinical import (Assessment, Biopsy, Surgery, Drug)
+from qiprofile_rest_client.model.clinical import (Biopsy, Surgery, Drug)
 from qiprofile_rest.test.helpers import seed
 
 MODELING_RESULT_PARAMS = ['fxl_k_trans', 'fxr_k_trans', 'delta_k_trans', 'v_e', 'tau_i']
@@ -87,10 +87,10 @@ class TestSeed(object):
                                       " dosage amount") % (subject.collection, subject.number))
 
     def _validate_clinical_encounters(self, subject):
-        # There are three clinical encounters.
+        # There are two clinical encounters.
         cln_encs = list(subject.clinical_encounters)
         assert_is_not_none(cln_encs, "%s has no encounters" % subject)
-        assert_equal(len(cln_encs), 3,
+        assert_equal(len(cln_encs), 2,
                      "%s Subject %d encounter count is incorrect: %d" %
                      (subject.collection, subject.number, len(cln_encs)))
 
@@ -102,14 +102,14 @@ class TestSeed(object):
                                "%s encounter %s weight type is incorrect: %s" %
                                (subject, enc, enc.weight.__class__))
 
-        # There is a biopsy with a pathology.
+        # There is a biopsy with a pathology report.
         biopsy = next((enc for enc in cln_encs if isinstance(enc, Biopsy)),
                       None)
         assert_is_not_none(biopsy, "%s Subject %d is missing a biopsy" %
                                    (subject.collection, subject.number))
         self._validate_pathology(subject, biopsy.pathology)
 
-        # There is a surgery with a pathology.
+        # There is a surgery with a pathology report.
         surgery = next((enc for enc in cln_encs if isinstance(enc, Surgery)),
                        None)
         assert_is_not_none(surgery, "%s Subject %d is missing a surgery" %
@@ -118,32 +118,16 @@ class TestSeed(object):
                      "%s surgery is missing a pathology report" % subject)
         self._validate_pathology(subject, surgery.pathology)
 
-        # There is a post-treatment TNM.
-        post_trt = next((enc for enc in cln_encs
-                         if isinstance(enc, Assessment)),
-                        None)
-        assert_is_not_none(post_trt, "%s Subject %d is missing an assessment" %
-                                     (subject.collection, subject.number))
-        assert_is_not_none(post_trt.evaluation,
-                           "%s post-treatment assessment is missing an evaluation" %
-                           subject)
-        assert_is_not_none(post_trt.evaluation.outcomes,
-                           "%s post-treatment assessment is missing outcomes" %
-                           subject)
-        assert_equal(len(post_trt.evaluation.outcomes), 1,
-                        "%s post-treatment outcomes count is incorrect" % subject)
-        post_trt_tnm = post_trt.evaluation.outcomes[0]
-        self._validate_tnm(subject, post_trt_tnm)
-
-    def _validate_pathology(self, subject, pathology):
-        assert_is_not_none(pathology, "%s is missing a pathology report" %
-                                      subject)
-        self._validate_tnm(subject, pathology.tnm)
-        # The tumor-specific tests.
-        if subject.collection == 'Breast':
-            self._validate_breast_pathology(subject, pathology)
-        elif subject.collection == 'Sarcoma':
-            self._validate_sarcoma_pathology(subject, pathology)
+    def _validate_pathology(self, subject, pathology_report):
+        assert_is_not_none(pathology_report, "%s is missing a pathology"
+                                             " report" % subject)
+        for tumor_pathology in pathology_report.tumors:
+            self._validate_tnm(subject, tumor_pathology.tnm)
+            # The tumor-specific tests.
+            if subject.collection == 'Breast':
+                self._validate_breast_pathology(subject, tumor_pathology)
+            elif subject.collection == 'Sarcoma':
+                self._validate_sarcoma_pathology(subject, tumor_pathology)
 
     def _validate_tnm(self, subject, tnm):
         assert_is_not_none(tnm, "%s is missing a TNM" % subject)
@@ -175,6 +159,11 @@ class TestSeed(object):
                             None)
         assert_is_not_none(progesterone, "%s pathology report is missing a"
                                          " progesterone status" % subject)
+        assert_is_not_none(pathology.rcb, "%s pathology report is missing"
+                                          " a RCB status" % subject)
+        assert_is_not_none(pathology.genetic_expression,
+                           "%s pathology report is missing a genetic"
+                           " expression status" % subject)
         assert_is_not_none(pathology.genetic_expression.her2_neu_ihc,
                            "%s pathology report is missing a"
                            " HER2 NEU IHC status" % subject)
