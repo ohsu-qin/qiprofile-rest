@@ -12,8 +12,8 @@ def spawn():
     
     :return: the completed process return code
     """
-    # The cumbersome but apparently necessary idiom below is required to continuously
-    # pipe the server output to the console
+    # The cumbersome but apparently necessary idiom below is required to
+    # continuously pipe the server output to the console
     # (cf. http://stackoverflow.com/questions/4417546/constantly-print-subprocess-output-while-process-is-running).
     proc = Popen(['python', APP], stdout=PIPE, stderr=STDOUT)
     while True:
