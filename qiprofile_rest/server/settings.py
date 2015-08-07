@@ -17,6 +17,21 @@ host = os.getenv('MONGO_HOST')
 if host:
     MONGO_HOST = host
 
+# The MongoDB port.
+port = os.getenv('MONGO_PORT')
+if port:
+    MONGO_PORT = int(port)
+
+# The MongoDB username.
+user = os.getenv('MONGO_USERNAME')
+if user:
+    MONGO_USERNAME = user
+
+# The MongoDB password.
+pswd = os.getenv('MONGO_PASSWORD')
+if pswd:
+    MONGO_PASSWORD = pswd
+
 # Even though the domain is defined by the Eve MongoEngine
 # adapter, a DOMAIN setting is required by Eve. This setting
 # is only used to avoid an Eve complaint about a missing domain.
