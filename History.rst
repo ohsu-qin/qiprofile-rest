@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+5.4.4 / 2015-08-07
+------------------
+* Allow MONGO_HOST env var override.
+
 5.4.3 / 2015-08-02
 ------------------
 * Bump REST client version.
