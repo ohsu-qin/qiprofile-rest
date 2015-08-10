@@ -1,5 +1,6 @@
 from nose.tools import (assert_is_none, assert_is_instance, assert_in,
-                        assert_is_not_none, assert_true, assert_equal)
+                        assert_is_not_none, assert_true, assert_false,
+                        assert_equal)
 from datetime import datetime
 from mongoengine import connect
 from qiprofile_rest_client.model.subject import Subject
@@ -9,6 +10,7 @@ from qiprofile_rest.test.helpers import seed
 
 MODELING_RESULT_PARAMS = ['fxl_k_trans', 'fxr_k_trans', 'delta_k_trans', 'v_e', 'tau_i']
 """The test seed modeling result parameters."""
+
 
 class TestSeed(object):
     """
@@ -108,6 +110,12 @@ class TestSeed(object):
         assert_is_not_none(biopsy, "%s Subject %d is missing a biopsy" %
                                    (subject.collection, subject.number))
         self._validate_pathology(subject, biopsy.pathology)
+        # Breast pre-neoadjuvant biopsy does not have a RCB.
+        if subject.collection == 'Breast':
+            tumor_pathology = biopsy.pathology.tumors[0]
+            assert_is_none(tumor_pathology.rcb,
+                           "%s biopsy pathology report incorrectly has a RCB"
+                           " status" % subject)
 
         # There is a surgery with a pathology report.
         surgery = next((enc for enc in cln_encs if isinstance(enc, Surgery)),
@@ -117,10 +125,19 @@ class TestSeed(object):
         assert_is_not_none(surgery.pathology,
                      "%s surgery is missing a pathology report" % subject)
         self._validate_pathology(subject, surgery.pathology)
+        # Surgery has a RCB.
+        if subject.collection == 'Breast':
+            tumor_pathology = surgery.pathology.tumors[0]
+            assert_is_not_none(tumor_pathology.rcb,
+                               "%s surgery pathology report is missing a"
+                               " RCB status" % subject)
 
     def _validate_pathology(self, subject, pathology_report):
         assert_is_not_none(pathology_report, "%s is missing a pathology"
                                              " report" % subject)
+        assert_false(len(pathology_report.tumors) == 0,
+                     "%s has no pathology tumor report")
+ 
         for tumor_pathology in pathology_report.tumors:
             self._validate_tnm(subject, tumor_pathology.tnm)
             # The tumor-specific tests.
@@ -159,8 +176,6 @@ class TestSeed(object):
                             None)
         assert_is_not_none(progesterone, "%s pathology report is missing a"
                                          " progesterone status" % subject)
-        assert_is_not_none(pathology.rcb, "%s pathology report is missing"
-                                          " a RCB status" % subject)
         assert_is_not_none(pathology.genetic_expression,
                            "%s pathology report is missing a genetic"
                            " expression status" % subject)

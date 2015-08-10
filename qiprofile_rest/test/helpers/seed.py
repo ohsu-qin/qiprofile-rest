@@ -108,9 +108,6 @@ class Breast(Collection):
         hr_opts = opts.pop('hormone_receptors', {})
         hormone_receptors = self._create_hormone_receptors(**hr_opts)
 
-        # The RCB.
-        rcb = self._create_rcb()
-
         # The gene expression result.
         gene_expr_opts = opts.pop('genetic_expression', {})
         # If this subject is estrogen receptor-status-positive
@@ -125,7 +122,7 @@ class Breast(Collection):
         genetic_expression = self._create_genetic_expression(**gene_expr_opts)
 
         # The {attribute: value} dictionary.
-        values = dict(tnm=tnm, extent=extent, rcb=rcb,
+        values = dict(tnm=tnm, extent=extent,
                       hormone_receptors=hormone_receptors,
                       genetic_expression=genetic_expression)
         values.update(opts)
@@ -142,7 +139,7 @@ class Breast(Collection):
 
         return [estrogen, progesterone]
 
-    def _create_rcb(self):
+    def create_rcb(self):
         return ResidualCancerBurden(
             tumor_cell_density=_random_int(0, 40),
             dcis_cell_density=_random_int(0, 20),
@@ -528,14 +525,21 @@ def _create_subject(collection, subject_number):
 
     # The surgery has a pathology report.
     surgery_tumor_path = collection.create_pathology(**opts)
+    # Only a breast resection pathology report measures the RCB.
+    if isinstance(collection, Breast):
+        surgery_tumor_path.rcb = collection.create_rcb()
     surgery_path = PathologyReport(tumors=[surgery_tumor_path])
     # The weight varies a bit from the initial weight with a bias
     # towards loss.
     weight += _random_int(-10, 5)
     # Breast surgery has a surgery type.
     if isinstance(collection, Breast):
+        # The surgery type.
+        srg_type_ndx = _random_int(0, len(BreastSurgery.TYPE_CHOICES) - 1)
+        surgery_type = BreastSurgery.TYPE_CHOICES[srg_type_ndx]
+        # The surgery object.
         surgery = BreastSurgery(date=surgery_date, weight=weight,
-                                surgery_type='Lumpectomy',
+                                surgery_type=surgery_type,
                                 pathology=surgery_path)
     else:
         surgery = Surgery(date=surgery_date, weight=weight,
