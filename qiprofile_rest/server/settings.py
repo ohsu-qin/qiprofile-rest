@@ -11,10 +11,18 @@ if env == 'production':
 else:
     MONGO_DBNAME = 'qiprofile_test'
 
-# The MongoDB host default is localhost, but can be reset
-# by the MONGO_HOST environment variable.
+# The DYNO environment variable is a useful Heroku detection
+# proxy. If on Heroku, then set the Heroku demo variables.
+if 'DYNO' in os.environ:
+    MONGO_HOST = 'ds053139.mongolab.com'
+    MONGO_PORT = 53139
+    MONGO_USERNAME = 'seger'
+    MONGO_PASSWORD = 'library1'
+
+# Look for MongoDB environment overrides:
+
+# The default host is localhost.
 host = os.getenv('MONGO_HOST')
-if host:
     MONGO_HOST = host
 
 # The MongoDB port.

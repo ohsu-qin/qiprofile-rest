@@ -1,9 +1,9 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
-5.4.4 / 2015-08-07
+5.4.4 / 2015-08-10
 ------------------
-* Allow MONGO_HOST env var override.
+* Add Heroku settings and Mongo env var overrides.
 
 5.4.3 / 2015-08-02
 ------------------
