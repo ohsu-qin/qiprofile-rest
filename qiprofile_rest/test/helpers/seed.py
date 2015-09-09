@@ -16,8 +16,10 @@ from qiprofile_rest_client.model.imaging import (
   Session, SessionDetail, Modeling, ModelingProtocol, Scan, ScanProtocol,
   Registration, RegistrationProtocol, LabelMap, Volume
 )
+from qiprofile_rest_client.model.common import TumorExtent
 from qiprofile_rest_client.model.clinical import (
-  Treatment, Drug, Dosage, Biopsy, Surgery, PathologyReport, TNM, TumorExtent,
+  Treatment, Drug, Dosage, Biopsy, Surgery, PathologyReport, TNM,
+  TumorLocation, TumorExtent,
   BreastSurgery, BreastPathology, ResidualCancerBurden, HormoneReceptorStatus,
   BreastGeneticExpression, BreastNormalizedAssay, ModifiedBloomRichardsonGrade,
   SarcomaPathology, FNCLCCGrade, NecrosisPercentValue, NecrosisPercentRange,
@@ -255,7 +257,8 @@ class Sarcoma(Collection):
 
     def create_pathology(self, **opts):
         # The tumor site.
-        location = 'Thigh'
+        location = TumorLocation(body_part='Thigh', sagittal_location='Left',
+                                 coronal_location='Posterior')
         # The histology.
         histology = 'Fibrosarcoma'
 

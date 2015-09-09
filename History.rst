@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+5.4.5 / 2015-09-09
+------------------
+* Qualify tumor location.
+
 5.4.4 / 2015-08-10
 ------------------
 * Add Heroku settings and Mongo env var overrides.

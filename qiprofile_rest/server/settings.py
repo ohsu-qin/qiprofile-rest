@@ -23,6 +23,7 @@ if 'DYNO' in os.environ:
 
 # The default host is localhost.
 host = os.getenv('MONGO_HOST')
+if host:
     MONGO_HOST = host
 
 # The MongoDB port.
