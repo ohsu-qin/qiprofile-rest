@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+5.5.1 / 2015-09-15
+------------------
+* Get the seed connection parameters from the Eve settings.
+
 5.4.5 / 2015-09-09
 ------------------
 * Qualify tumor location.
