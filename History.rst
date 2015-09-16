@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+5.6.1 / 2015-09-15
+------------------
+* Make the default environment development rather than production.
+
 5.5.1 / 2015-09-15
 ------------------
 * Get the seed connection parameters from the Eve settings.
