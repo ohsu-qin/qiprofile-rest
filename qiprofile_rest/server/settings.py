@@ -2,14 +2,20 @@
 
 import os
 
+PROD_DBNAME = 'qiprofile'
+"""The production database name."""
+
+TEST_DBNAME = 'qiprofile_test'
+"""The test/dev database name."""
+
 # The run environment default is production.
 # Modify this by setting the NODE_ENV environment variable.
 env = os.getenv('NODE_ENV') or 'production'
 # The MongoDB database.
 if env == 'production':
-    MONGO_DBNAME = 'qiprofile'
+    MONGO_DBNAME = PROD_DBNAME
 else:
-    MONGO_DBNAME = 'qiprofile_test'
+    MONGO_DBNAME = TEST_DBNAME
 
 # The DYNO environment variable is a useful Heroku detection
 # proxy. If on Heroku, then set the Heroku demo variables.

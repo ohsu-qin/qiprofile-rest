@@ -19,15 +19,33 @@ from qiprofile_rest_client.model.imaging import (
 from qiprofile_rest_client.model.common import TumorExtent
 from qiprofile_rest_client.model.clinical import (
   Treatment, Drug, Dosage, Biopsy, Surgery, PathologyReport, TNM,
-  TumorLocation, TumorExtent,
-  BreastSurgery, BreastPathology, ResidualCancerBurden, HormoneReceptorStatus,
-  BreastGeneticExpression, BreastNormalizedAssay, ModifiedBloomRichardsonGrade,
-  SarcomaPathology, FNCLCCGrade, NecrosisPercentValue, NecrosisPercentRange,
-  necrosis_percent_as_score
+  TumorLocation, BreastSurgery, BreastPathology, ResidualCancerBurden,
+  HormoneReceptorStatus, BreastGeneticExpression, BreastNormalizedAssay,
+  ModifiedBloomRichardsonGrade, SarcomaPathology, FNCLCCGrade,
+  NecrosisPercentValue, NecrosisPercentRange, necrosis_percent_as_score
 )
+from qiprofile_rest.server import settings
 
 PROJECT = 'QIN_Test'
+"""The test/dev project name."""
 
+CONNECT_SETTINGS = dict(
+    db='MONGO_DBNAME',
+    host='MONGO_HOST',
+    port='MONGO_PORT',
+    username='MONGO_USERNAME',
+    password='MONGO_PASSWORD'
+)
+"""The connection {parameter: constant} dictionary."""
+
+CONNECT_SETTING_REGEX = re.compile("""
+    MONGO_          # The constant name prefix
+    (?P<suffix>\w+) # The constant name suffix  
+""", re.VERBOSE)
+"""
+The connection parameter is the lower case connection setting constant
+name suffix.
+"""
 
 class Collection(object):
     def __init__(self, name, visit_count, volume_count):
@@ -891,6 +909,15 @@ def _random_boolean():
         return False
 
 
+def _connect():
+    # The Eve connection parameters.
+    kwargs = {attr: getattr(settings, const)
+              for attr, const in CONNECT_SETTINGS.iteritems()
+              if hasattr(settings, const)}
+    # Connect to the database.
+    connect(**kwargs)
+    
+
 if __name__ == "__main__":
-    connect(db='qiprofile_test')
+    _connect()
     seed()
