@@ -10,7 +10,7 @@ TEST_DBNAME = 'qiprofile_test'
 
 # The run environment default is production.
 # Modify this by setting the NODE_ENV environment variable.
-env = os.getenv('NODE_ENV') or 'production'
+env = os.getenv('NODE_ENV') or 'development'
 # The MongoDB database.
 if env == 'production':
     MONGO_DBNAME = PROD_DBNAME
