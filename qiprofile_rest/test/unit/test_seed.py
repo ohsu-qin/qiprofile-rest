@@ -40,6 +40,11 @@ class TestSeed(object):
         Sarcoma=3
     )
 
+    def test_reseed(self):
+        subjects = seed.seed()
+        assert_equal(subjects, self._subjects, "Reseed result is incorrect:"
+                                               " %s" % subjects)
+
     def _validate_subject(self, subject):
         collections = ((coll.name for coll in seed.COLLECTIONS))
         assert_in(subject.collection, collections,
