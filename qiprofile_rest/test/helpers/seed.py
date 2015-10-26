@@ -188,13 +188,15 @@ class Breast(Collection):
         # Make the default {attribute: value} dictionary.
         values = dict(
             hormone=hormone,
-            positive =_random_boolean(),
-            quick_score=_random_int(0, 8),
-            intensity=_random_int(0, 100)
+            positive =_random_boolean()
+        )
+        if values['positive']:
+            values['quick_score'] = _random_int(0, 8),
+            values['intensity'] = _random_int(0, 100)
         )
         # Override the defaults.
         values.update(opts)
-        
+
         # Return the new receptor status.
         return HormoneReceptorStatus(**values)
 
@@ -916,7 +918,7 @@ def _connect():
               if hasattr(settings, const)}
     # Connect to the database.
     connect(**kwargs)
-    
+
 
 if __name__ == "__main__":
     _connect()
