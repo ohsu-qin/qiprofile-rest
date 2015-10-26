@@ -25,9 +25,9 @@ def _parse_arguments():
     """Parses the command line arguments."""
     parser = argparse.ArgumentParser()
     env_grp = parser.add_mutually_exclusive_group()
-    env_grp.add_argument('--production', help="Production environment (the default)",
+    env_grp.add_argument('--production', help="Production environment",
                          dest='env', action='store_const', const='production')
-    env_grp.add_argument('--development', help="Test environment",
+    env_grp.add_argument('--development', help="Dev/test environment (the default)",
                          dest='env', action='store_const', const='development')
 
     args = vars(parser.parse_args())
