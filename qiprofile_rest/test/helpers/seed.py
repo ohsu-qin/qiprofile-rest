@@ -193,7 +193,6 @@ class Breast(Collection):
         if values['positive']:
             values['quick_score'] = _random_int(0, 8),
             values['intensity'] = _random_int(0, 100)
-        )
         # Override the defaults.
         values.update(opts)
 
