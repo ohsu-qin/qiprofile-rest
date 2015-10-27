@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+5.6.2 / 2015-10-26 
+------------------
+* Correct the environment option help text.
+
 5.6.1 / 2015-09-15
 ------------------
 * Make the default environment development rather than production.
