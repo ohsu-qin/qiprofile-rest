@@ -38,14 +38,6 @@ CONNECT_SETTINGS = dict(
 )
 """The connection {parameter: constant} dictionary."""
 
-CONNECT_SETTING_REGEX = re.compile("""
-    MONGO_          # The constant name prefix
-    (?P<suffix>\w+) # The constant name suffix  
-""", re.VERBOSE)
-"""
-The connection parameter is the lower case connection setting constant
-name suffix.
-"""
 
 class Collection(object):
     def __init__(self, name, visit_count, volume_count):
@@ -911,6 +903,14 @@ def _random_boolean():
 
 
 def _connect():
+    """
+    Connects to the Eve server with keywords obtained from the
+    server settings. The connect keyword parameters consist of
+    the :const:`CONNECT_SETTINGS` item keys whose item value is
+    defined as a constant in the :mod:`qiprofile_rest.server.settings`.
+    The keyword parameter values are the corresponding settings
+    constant value.
+    """
     # The Eve connection parameters.
     kwargs = {attr: getattr(settings, const)
               for attr, const in CONNECT_SETTINGS.iteritems()
