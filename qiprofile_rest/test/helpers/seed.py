@@ -348,8 +348,8 @@ REG_PARAMS = dict(
     transform_parameters='[(0.1,), (0.1,), (0.1, 3, 0)]'
 )
 
-# The modeling input parameters.
-MODELING_INPUT_PARAMS = dict(r1_0_val=0.7, baseline_end_idx=1)
+# The modeling R1 input parameters.
+R1_PARAMS = dict(r1_0_val=0.7, baseline_end_idx=1)
 
 PROTOCOLS = Bunch()
 """
@@ -446,7 +446,7 @@ def _create_protocols():
     """Returns the protocols described in :const:`PROTOCOLS`."""
     # The modeling protocol.
     bolero = database.get_or_create(ModelingProtocol, dict(technique='Bolero'),
-        input_parameters=MODELING_INPUT_PARAMS)
+                                    r1_parameters=R1_PARAMS)
     # The T1 scan protocol.
     t1 = database.get_or_create(ScanProtocol, dict(scan_type='T1'),
                                 orientation='axial')
