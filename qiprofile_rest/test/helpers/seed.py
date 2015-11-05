@@ -446,7 +446,7 @@ def _create_protocols():
     """Returns the protocols described in :const:`PROTOCOLS`."""
     # The modeling protocol.
     bolero = database.get_or_create(ModelingProtocol, dict(technique='Bolero'),
-                                    r1_parameters=R1_PARAMS)
+                                    parameters=dict(r1=R1_PARAMS))
     # The T1 scan protocol.
     t1 = database.get_or_create(ScanProtocol, dict(scan_type='T1'),
                                 orientation='axial')
