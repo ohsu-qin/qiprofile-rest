@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+5.6.3 / 2015-11-04
+------------------
+* Adapt seed to the REST data model ModelingProtocol parameters change.
+
 5.6.2 / 2015-10-26 
 ------------------
 * Correct the environment option help text.
