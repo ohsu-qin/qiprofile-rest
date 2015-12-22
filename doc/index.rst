@@ -60,23 +60,11 @@ Usage
 Development
 ***********
 
-Download the source by cloning the `source repository`_::
+The project is cloned, tested, documented and released as described in
+the `qipipe`_ documentation Development section.
 
-    git clone https://github.com/ohsu-qin/qiprofile-rest.git
-
-Testing is performed with the nose_ package, which must be installed separately.
-
-Documentation is built automatically by ReadTheDocs_ when the project is pushed
-to GitHub. Documentation can be generated locally as follows:
-
-* Install Sphinx_, if necessary.
-
-* Run the following in the ``doc`` subdirectory::
-
-      make html
-
-A sample database can be created by running the following command in the local
-``qiprofile-rest`` project directory::
+A sample database can be created by running the following command in
+the local ``qiprofile-rest`` project directory::
 
     ./qiprofile_rest/test/helpers/seed.py
 
@@ -99,13 +87,8 @@ A sample database can be created by running the following command in the local
 
 .. _Python: http://www.python.org
 
-.. _source repository: https://github.com/ohsu-qin/qiprofile-rest
+.. _qipipe: qipipe.readthedocs.org/en/latest/
 
 .. _REST client: qiprofile-rest-client.readthedocs.org/en/latest/
 
 .. _QuIP: https://github.com/ohsu-qin/qiprofile
-
-.. _ReadTheDocs: https://www.readthedocs.org
-
-.. _Sphinx: http://sphinx-doc.org/index.html
-
