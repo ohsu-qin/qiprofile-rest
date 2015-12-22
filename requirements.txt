@@ -1,5 +1,5 @@
-bunch==1.0.1
-Eve-Mongoengine==0.0.9
-pytz==2014.3
+bunch
+Eve-Mongoengine
+pytz
 qiutil
-qiprofile_rest_client==5.7.2
+qiprofile_rest_client
