@@ -445,17 +445,16 @@ The incidences sum to 100.
 def _create_protocols():
     """Returns the protocols described in :const:`PROTOCOLS`."""
     # The modeling protocol.
-    bolero = database.get_or_create(ModelingProtocol, dict(technique='Bolero'),
-                                    parameters=dict(r1=R1_PARAMS))
+    mdl_cfg = dict(r1=R1_PARAMS)
+    bolero = database.get_or_create(ModelingProtocol,
+                                    dict(configuration=mdl_cfg))
     # The T1 scan protocol.
-    t1 = database.get_or_create(ScanProtocol, dict(scan_type='T1'),
-                                orientation='axial')
+    t1 = database.get_or_create(ScanProtocol, dict(scan_type='T1'))
     # The T2 scan protocol.
-    t2 = database.get_or_create(ScanProtocol, dict(scan_type='T2'),
-                                orientation='axial')
+    t2 = database.get_or_create(ScanProtocol, dict(scan_type='T2'))
     # The registration protocol.
     ants_defs = dict(parameters=REG_PARAMS)
-    ants = database.get_or_create(RegistrationProtocol, dict(technique='ANTS'),
+    ants = database.get_or_create(RegistrationProtocol, dict(technique='ANTs'),
                                   parameters=REG_PARAMS)
 
     return dict(t1=t1, t2=t2, bolero=bolero, ants=ants)
@@ -663,7 +662,7 @@ def _create_modeling(subject, session_number):
                                           FXL_K_TRANS_FILE_NAME)
     fxl_k_trans_label_map = _create_label_map(fxl_k_trans_file)
     fxl_k_trans = Modeling.ParameterResult(average=fxl_k_trans_avg,
-                                           filename=fxl_k_trans_file,
+                                           name=fxl_k_trans_file,
                                            label_map=fxl_k_trans_label_map)
 
     factor = DELTA_K_TRANS_FACTOR + ((random.random() - 0.5) * 0.4)
@@ -672,7 +671,7 @@ def _create_modeling(subject, session_number):
                                           FXR_K_TRANS_FILE_NAME)
     fxr_k_trans_label_map = _create_label_map(fxr_k_trans_file)
     fxr_k_trans = Modeling.ParameterResult(average=fxr_k_trans_avg,
-                                           filename=fxr_k_trans_file,
+                                           name=fxr_k_trans_file,
                                            label_map=fxr_k_trans_label_map)
 
     delta_k_trans_avg = fxl_k_trans_avg - fxr_k_trans_avg
@@ -680,21 +679,21 @@ def _create_modeling(subject, session_number):
                                             DELTA_K_TRANS_FILE_NAME)
     delta_k_trans_label_map = _create_label_map(delta_k_trans_file)
     delta_k_trans = Modeling.ParameterResult(average=delta_k_trans_avg,
-                                             filename=delta_k_trans_file,
+                                             name=delta_k_trans_file,
                                              label_map=delta_k_trans_label_map)
 
     offset = (0.5 - random.random()) * 0.2
     v_e_avg = V_E_0 + offset
     v_e_file = _resource_filename(subject, session_number, resource, V_E_FILE_NAME)
     v_e_label_map = _create_label_map(v_e_file)
-    v_e = Modeling.ParameterResult(average=v_e_avg, filename=v_e_file,
+    v_e = Modeling.ParameterResult(average=v_e_avg, name=v_e_file,
                                    label_map=v_e_label_map)
 
     offset = (0.5 - random.random()) * 0.2
     tau_i_avg = TAU_I_0 + offset
     tau_i_file = _resource_filename(subject, session_number, resource, V_E_FILE_NAME)
     tau_i_label_map = _create_label_map(tau_i_file)
-    tau_i = Modeling.ParameterResult(average=tau_i_avg, filename=tau_i_file,
+    tau_i = Modeling.ParameterResult(average=tau_i_avg, name=tau_i_file,
                                      label_map=tau_i_label_map)
 
     result = dict(fxl_k_trans=fxl_k_trans, fxr_k_trans=fxr_k_trans,
@@ -725,7 +724,7 @@ def _create_t1_scan(collection, subject, session_number, bolus_arrival_index):
     # Add a motion artifact.
     _add_motion_artifact(intensities)
     # Make the volumes.
-    volumes = [Volume(filename=filenames[i], average_intensity=intensities[i])
+    volumes = [Volume(name=filenames[i], average_intensity=intensities[i])
                for i in range(collection.volume_count)]
 
     # Make the T1 registration.
@@ -739,7 +738,7 @@ def _create_t2_scan(collection, subject, session_number):
     # Make the volume image file names.
     filename = _scan_filename(subject, session_number, 2, 1)
     # Make the volume.
-    volumes = [Volume(filename=filename)]
+    volumes = [Volume(name=filename)]
 
     return Scan(number=2, protocol=PROTOCOLS.t2, volumes=volumes)
 
@@ -753,7 +752,7 @@ def _create_registration(collection, subject, session_number, bolus_arrival_inde
     # Make the average intensity values.
     intensities = _create_intensities(collection.volume_count, bolus_arrival_index)
     # Make the volumes.
-    volumes = [Volume(filename=filenames[i], average_intensity=intensities[i])
+    volumes = [Volume(name=filenames[i], average_intensity=intensities[i])
                for i in range(collection.volume_count)]
 
     return Registration(protocol=PROTOCOLS.ants, resource=resource, volumes=volumes)
@@ -835,7 +834,7 @@ def _create_label_map(modeling_file):
     base, ext = splitexts(modeling_file)
     label_map = base + '_color' + ext
 
-    return LabelMap(filename=label_map, color_table=COLOR_TABLE_FILE_NAME)
+    return LabelMap(name=label_map, color_table=COLOR_TABLE_FILE_NAME)
 
 
 def _create_intensities(count, bolus_arrival_index):

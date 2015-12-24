@@ -279,7 +279,7 @@ class TestSeed(object):
             assert_is_not_none(value.average,
                                "%s Subject %d modeling %s is missing a %s average" %
                                (subject.collection, subject.number, modeling.resource, param))
-            assert_is_not_none(value.filename,
+            assert_is_not_none(value.name,
                                "%s Subject %d modeling %s is missing a %s filename" %
                                (subject.collection, subject.number, modeling.resource, param))
 
@@ -288,7 +288,7 @@ class TestSeed(object):
         assert_is_not_none(label_map,
                            "%s Subject %d modeling is missing a label_map" %
                            (subject.collection, subject.number))
-        assert_is_not_none(label_map.filename,
+        assert_is_not_none(label_map.name,
                            "%s Subject %d modeling label map is missing a file name" %
                            (subject.collection, subject.number))
         assert_is_not_none(label_map.color_table,
