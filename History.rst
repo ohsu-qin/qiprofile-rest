@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+5.6.4 / 2015-12-23
+------------------
+* Adapt seed to the REST data model v5.9.1 imaging changes.
+
 5.6.3 / 2015-11-04
 ------------------
 * Adapt seed to the REST data model ModelingProtocol parameters change.
