@@ -18,7 +18,7 @@ Installation
 ************
 1. Install the Python_ pip_ package on your workstation, if necessary.
 
-2. Install MongoDB_, if necessary.
+2. Install MongoDB_, if necessary. Use the default WiredTiger storage engine.
 
 3. Install ``qiprofile-rest``::
 
@@ -79,7 +79,7 @@ the local ``qiprofile-rest`` project directory::
 
 .. _Knight Cancer Institute: http://www.ohsu.edu/xd/health/services/cancer
 
-.. _MongoDB: http://django-mongodb.org
+.. _MongoDB: https://docs.mongodb.org/manual/
 
 .. _nose: https://nose.readthedocs.org/en/latest/
 
