@@ -658,42 +658,34 @@ def _create_modeling(subject, session_number):
     # Add modeling parameters with a random offset.
     factor = 1 + ((random.random() - 0.5) * 0.4)
     fxl_k_trans_avg = FXL_K_TRANS_AVG * factor
-    fxl_k_trans_file = _resource_filename(subject, session_number, resource,
-                                          FXL_K_TRANS_FILE_NAME)
-    fxl_k_trans_label_map = _create_label_map(fxl_k_trans_file)
+    fxl_k_trans_label_map = _create_label_map(FXR_K_TRANS_FILE_NAME)
     fxl_k_trans = Modeling.ParameterResult(average=fxl_k_trans_avg,
-                                           name=fxl_k_trans_file,
+                                           name=FXL_K_TRANS_FILE_NAME,
                                            label_map=fxl_k_trans_label_map)
 
     factor = DELTA_K_TRANS_FACTOR + ((random.random() - 0.5) * 0.4)
     fxr_k_trans_avg = fxl_k_trans_avg * factor
-    fxr_k_trans_file = _resource_filename(subject, session_number, resource,
-                                          FXR_K_TRANS_FILE_NAME)
-    fxr_k_trans_label_map = _create_label_map(fxr_k_trans_file)
+    fxr_k_trans_label_map = _create_label_map(FXR_K_TRANS_FILE_NAME)
     fxr_k_trans = Modeling.ParameterResult(average=fxr_k_trans_avg,
-                                           name=fxr_k_trans_file,
+                                           name=FXR_K_TRANS_FILE_NAME,
                                            label_map=fxr_k_trans_label_map)
 
     delta_k_trans_avg = fxl_k_trans_avg - fxr_k_trans_avg
-    delta_k_trans_file = _resource_filename(subject, session_number, resource,
-                                            DELTA_K_TRANS_FILE_NAME)
-    delta_k_trans_label_map = _create_label_map(delta_k_trans_file)
+    delta_k_trans_label_map = _create_label_map(DELTA_K_TRANS_FILE_NAME)
     delta_k_trans = Modeling.ParameterResult(average=delta_k_trans_avg,
-                                             name=delta_k_trans_file,
+                                             name=DELTA_K_TRANS_FILE_NAME,
                                              label_map=delta_k_trans_label_map)
 
     offset = (0.5 - random.random()) * 0.2
     v_e_avg = V_E_0 + offset
-    v_e_file = _resource_filename(subject, session_number, resource, V_E_FILE_NAME)
-    v_e_label_map = _create_label_map(v_e_file)
-    v_e = Modeling.ParameterResult(average=v_e_avg, name=v_e_file,
+    v_e_label_map = _create_label_map(V_E_FILE_NAME)
+    v_e = Modeling.ParameterResult(average=v_e_avg, name=V_E_FILE_NAME,
                                    label_map=v_e_label_map)
 
     offset = (0.5 - random.random()) * 0.2
     tau_i_avg = TAU_I_0 + offset
-    tau_i_file = _resource_filename(subject, session_number, resource, V_E_FILE_NAME)
-    tau_i_label_map = _create_label_map(tau_i_file)
-    tau_i = Modeling.ParameterResult(average=tau_i_avg, name=tau_i_file,
+    tau_i_label_map = _create_label_map(TAU_I_FILE_NAME)
+    tau_i = Modeling.ParameterResult(average=tau_i_avg, name=TAU_I_FILE_NAME,
                                      label_map=tau_i_label_map)
 
     result = dict(fxl_k_trans=fxl_k_trans, fxr_k_trans=fxr_k_trans,
