@@ -445,17 +445,16 @@ The incidences sum to 100.
 def _create_protocols():
     """Returns the protocols described in :const:`PROTOCOLS`."""
     # The modeling protocol.
-    mdl_cfg = dict(r1=R1_PARAMS)
-    bolero = database.get_or_create(ModelingProtocol,
-                                    dict(configuration=mdl_cfg))
+    mdl_key = dict(technique='BOLERO', configuration=dict(r1=R1_PARAMS))
+    bolero = database.get_or_create(ModelingProtocol, mdl_key)
     # The T1 scan protocol.
-    t1 = database.get_or_create(ScanProtocol, dict(scan_type='T1'))
+    t1 = database.get_or_create(ScanProtocol, dict(technique='T1'))
     # The T2 scan protocol.
-    t2 = database.get_or_create(ScanProtocol, dict(scan_type='T2'))
+    t2 = database.get_or_create(ScanProtocol, dict(technique='T2'))
     # The registration protocol.
-    ants_defs = dict(parameters=REG_PARAMS)
-    ants = database.get_or_create(RegistrationProtocol, dict(technique='ANTs'),
-                                  parameters=REG_PARAMS)
+    ants_cfg = {'Registration': REG_PARAMS}
+    ants_key = dict(technique='ANTs', configuration=ants_cfg)
+    ants = database.get_or_create(RegistrationProtocol, ants_key)
 
     return dict(t1=t1, t2=t2, bolero=bolero, ants=ants)
 
