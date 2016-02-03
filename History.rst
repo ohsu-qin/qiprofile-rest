@@ -1,9 +1,13 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+5.6.6 / 2016-02-03
+------------------
+* Bump the client version.
+
 5.6.5 / 2016-02-03
 ------------------
-* Adapt seed to the REST data model v5.9.1 imaging changes.
+* Add colorizations.
 
 5.6.4 / 2015-12-23
 ------------------
