@@ -11,7 +11,7 @@ from mongoengine import connect
 from qiutil import uid
 from qiutil.file import splitexts
 from qiprofile_rest_client.helpers import database
-from qiprofile_rest_client.model.subject import Subject
+from qiprofile_rest_client.model.subject import (ImagingCollection, Subject)
 from qiprofile_rest_client.model.imaging import (
   Session, SessionDetail, Modeling, ModelingProtocol, Scan, ScanProtocol,
   Registration, RegistrationProtocol, LabelMap, Volume
@@ -40,8 +40,10 @@ CONNECT_SETTINGS = dict(
 
 
 class Collection(object):
-    def __init__(self, name, visit_count, volume_count):
+    def __init__(self, name, description, url, visit_count, volume_count):
         self.name = name
+        self.description = description
+        self.url = url
         self.visit_count = visit_count
         self.volume_count = volume_count
 
@@ -88,8 +90,11 @@ class Breast(Collection):
     The test Breast collection has four visits with 32 volumes each.
     """
     def __init__(self):
-        super(Breast, self).__init__(name='Breast', visit_count=4,
-                                     volume_count=32)
+        super(Breast, self).__init__(
+            name='Breast', description='QIN breast DCE MRI',
+            url='https://wiki.cancerimagingarchive.net/display/Public/QIN+Breast+DCE-MRI',
+            visit_count=4, volume_count=32
+        )
 
     def create_grade(self):
         """
@@ -249,8 +254,11 @@ class Sarcoma(Collection):
     """
 
     def __init__(self):
-        super(Sarcoma, self).__init__(name='Sarcoma', visit_count=3,
-                                      volume_count=40)
+        super(Sarcoma, self).__init__(
+            name='Sarcoma', description='QIN soft-tissue sarcoma DCE MRI',
+            url='https://wiki.cancerimagingarchive.net/display/Public/QIN-SARCOMA',
+            visit_count=3, volume_count=40
+        )
 
     def create_grade(self):
         """
@@ -397,6 +405,12 @@ def clear():
 
 
 def _seed_collection(collection):
+    # Make the collection database object.
+    coll = ImagingCollection(name=collection.name,
+                             description=collection.description,
+                             url=collection.url)
+    coll.save()
+    # Make and return the subjects.
     return [_seed_subject(collection, sbj_nbr)
             for sbj_nbr in range(1, 4)]
 
@@ -409,6 +423,11 @@ def _clear_collection(collection):
             sbj.delete()
         except Subject.DoesNotExist:
             pass
+    try:
+        coll = ImagingCollection.objects.get(name=collection)
+        coll.delete()
+    except ImagingCollection.DoesNotExist:
+        pass
 
 
 def _seed_subject(collection, subject_number):
