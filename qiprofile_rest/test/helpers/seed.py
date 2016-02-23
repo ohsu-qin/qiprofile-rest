@@ -6,7 +6,7 @@ import pytz
 import random
 import math
 from decimal import Decimal
-from bunch import Bunch
+from bunch import (Bunch, bunchify)
 from mongoengine import connect
 from qiutil import uid
 from qiutil.file import splitexts
@@ -40,12 +40,9 @@ CONNECT_SETTINGS = dict(
 
 
 class Collection(object):
-    def __init__(self, name, description, url, visit_count, volume_count):
+    def __init__(self, name, **opts):
         self.name = name
-        self.description = description
-        self.url = url
-        self.visit_count = visit_count
-        self.volume_count = volume_count
+        self.options = bunchify(opts)
 
     def create_grade(self, **opts):
         raise NotImplementedError("Subclass responsibility")
@@ -255,7 +252,8 @@ class Sarcoma(Collection):
 
     def __init__(self):
         super(Sarcoma, self).__init__(
-            name='Sarcoma', description='QIN soft-tissue sarcoma DCE MRI',
+            name='Sarcoma',
+            description='QIN soft-tissue sarcoma DCE MRI',
             url='https://wiki.cancerimagingarchive.net/display/Public/QIN-SARCOMA',
             visit_count=3, volume_count=40
         )
@@ -406,9 +404,11 @@ def clear():
 
 def _seed_collection(collection):
     # Make the collection database object.
-    coll = ImagingCollection(name=collection.name,
-                             description=collection.description,
-                             url=collection.url)
+    opts = {attr: val for attr, val in collection.options.iteritems()
+            if attr in ImagingCollection._fields}
+    coll = ImagingCollection(project=PROJECT,
+                             name=collection.name,
+                             **opts)
     coll.save()
     # Make and return the subjects.
     return [_seed_subject(collection, sbj_nbr)
@@ -494,7 +494,7 @@ def _create_subject(collection, subject_number):
 
     # The sessions.
     sessions = [_create_session(collection, subject, i + 1)
-                for i in range(collection.visit_count)]
+                for i in range(collection.options.visit_count)]
 
     # The neodjuvant treatment starts a few days after the first visit.
     offset = _random_int(0, 3)
@@ -726,22 +726,25 @@ def _create_session_date(subject, session_number):
 
 
 def _create_t1_scan(collection, subject, session_number, bolus_arrival_index):
+    # The number of test volumes to create.
+    vol_cnt = collection.options.volume_count
     # Make the volume image file names.
     filenames = [_scan_filename(subject, session_number, 1, i+1)
-                 for i in range(collection.volume_count)]
+                 for i in range(vol_cnt)]
     # Make the average intensity values.
-    intensities = _create_intensities(collection.volume_count, bolus_arrival_index)
+    intensities = _create_intensities(vol_cnt, bolus_arrival_index)
     # Add a motion artifact.
     _add_motion_artifact(intensities)
     # Make the volumes.
     volumes = [Volume(name=filenames[i], average_intensity=intensities[i])
-               for i in range(collection.volume_count)]
+               for i in range(vol_cnt)]
 
     # Make the T1 registration.
     reg = _create_registration(collection, subject, session_number,
                                bolus_arrival_index)
 
-    return Scan(number=1, protocol=PROTOCOLS.t1, volumes=volumes, registrations=[reg])
+    return Scan(number=1, protocol=PROTOCOLS.t1, volumes=volumes,
+                registrations=[reg])
 
 
 def _create_t2_scan(collection, subject, session_number):
@@ -754,16 +757,18 @@ def _create_t2_scan(collection, subject, session_number):
 
 
 def _create_registration(collection, subject, session_number, bolus_arrival_index):
+    # The number of test volumes to create.
+    vol_cnt = collection.options.volume_count
     # The XNAT resource name.
     resource = "reg_%s" % uid.generate_string_uid()
     # Make the volume image file names.
     filenames = [_registration_filename(subject, session_number, resource, i+1)
-                 for i in range(collection.volume_count)]
+                 for i in range(vol_cnt)]
     # Make the average intensity values.
-    intensities = _create_intensities(collection.volume_count, bolus_arrival_index)
+    intensities = _create_intensities(vol_cnt, bolus_arrival_index)
     # Make the volumes.
     volumes = [Volume(name=filenames[i], average_intensity=intensities[i])
-               for i in range(collection.volume_count)]
+               for i in range(vol_cnt)]
 
     return Registration(protocol=PROTOCOLS.ants, resource=resource, volumes=volumes)
 

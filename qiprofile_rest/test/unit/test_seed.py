@@ -305,7 +305,8 @@ class TestSeed(object):
 
         # The T1 scan.
         scan = scans[0]
-        expected_volume_cnt = seed.collection_for(subject.collection).volume_count
+        coll = seed.collection_for(subject.collection)
+        expected_volume_cnt = coll.options.volume_count
         assert_equal(len(scan.volumes), expected_volume_cnt,
                      "%s session %d scan %d volumes count is incorrect: %d" %
                      (subject, session.number, scan.number, len(scan.volumes)))
