@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+5.6.8 / 2016-02-22
+------------------
+* Add the ImagingCollection model.
+
 5.6.7 / 2016-02-22
 ------------------
 * Add the ImagingCollection.

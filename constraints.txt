@@ -2,4 +2,4 @@ bunch>=1.0.1
 Eve-Mongoengine>=0.0.9
 pytz==2014.3
 qiutil>=2.2.12
-qiprofile_rest_client>=5.11.2
+qiprofile_rest_client>=5.11.3

@@ -3,7 +3,7 @@ import importlib
 import mongoengine
 from eve import Eve
 from eve_mongoengine import EveMongoengine
-from qiprofile_rest_client.model.subject import Subject
+from qiprofile_rest_client.model.subject import (ImagingCollection, Subject)
 from qiprofile_rest_client.model.imaging import (SessionDetail, Scan, ScanProtocol,
                                           RegistrationProtocol,
                                           ModelingProtocol)
@@ -15,6 +15,7 @@ app = Eve()
 ext = EveMongoengine(app)
 
 # Register the model non-embedded documdent classes.
+ext.add_model(ImagingCollection, url='imaging-collection')
 ext.add_model(Subject, url='subject')
 ext.add_model(SessionDetail, url='session-detail')
 ext.add_model(ScanProtocol, url='scan-protocol')
