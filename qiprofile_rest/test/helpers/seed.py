@@ -399,7 +399,7 @@ def seed():
 def clear():
     """Removes the seeded documents."""
     for coll in COLLECTIONS:
-        _clear_collection(coll)
+        _clear_collection(coll.name)
 
 
 def _seed_collection(collection):
@@ -935,4 +935,5 @@ def _connect():
 
 if __name__ == "__main__":
     _connect()
+    clear()
     seed()
