@@ -371,15 +371,21 @@ The following protocols:
 
 def seed():
     """
-    Populates the MongoDB database named ``qiprofile_test`` with
-    three subjects each of the ``Breast`` and ``Sarcoma`` collection.
+    Populates the currently connected MongoDB database with three
+    subjects each of the :const:`COLLECTIONS`.
 
-    :Note: existing subjects are not modified. In order to refresh the
-      seed subjects, drop the ``qiprofile_test`` database first.
+    :Note: existing content which matches the seed content, including
+      imaging collection objects, subjects and subject detail, is
+      deleted from the database first. Other database content is
+      retained. Protocols are created on demand if no matching
+      protocol is found.
 
-    :return:: three :const:`PROJECT` subjects for each collection in
-        :const:`COLLECTIONS`
+    :return: a list consisting of three :const:`PROJECT` subjects for
+        each collection in :const:`COLLECTIONS`
     """
+    # Clear out the old content, if any.
+    clear()
+    
     # Initialize the pseudo-random generator.
     random.seed()
     # Make the protocols.
@@ -935,5 +941,4 @@ def _connect():
 
 if __name__ == "__main__":
     _connect()
-    clear()
     seed()
