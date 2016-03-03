@@ -42,8 +42,11 @@ class TestSeed(object):
 
     def test_reseed(self):
         subjects = seed.seed()
-        assert_equal(subjects, self._subjects, "Reseed result is incorrect:"
-                                               " %s" % subjects)
+        expected = set(str(sbj) for sbj in self._subjects)
+        actual = set(str(sbj) for sbj in subjects)
+        assert_equal(actual, expected, "Reseed result is incorrect -"
+                                       "\nexpected:\n%s\nfound:\n%s" %
+                                       (expected, actual))
 
     def _validate_subject(self, subject):
         collections = ((coll.name for coll in seed.COLLECTIONS))
