@@ -385,7 +385,6 @@ def seed():
     """
     # Clear out the old content, if any.
     clear()
-    
     # Initialize the pseudo-random generator.
     random.seed()
     # Make the protocols.
