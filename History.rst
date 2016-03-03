@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+5.7.2 / 2016-03-03
+------------------
+* Test reseed by subject string comparison.
+
 5.7.1 / 2016-02-24
 ------------------
 * Add the ImagingCollection model.
