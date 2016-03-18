@@ -2,5 +2,5 @@ bunch~=1.0
 Eve-Mongoengine~=0.0.9
 pytz~=2015.7
 pymongo==2.7.1
-qiutil~=2.2
-qiprofile_rest_client~=5.11
+qiutil~=2.2.12
+qiprofile_rest_client~=5.12.1
