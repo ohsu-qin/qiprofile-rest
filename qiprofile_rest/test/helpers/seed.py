@@ -14,7 +14,7 @@ from qiprofile_rest_client.helpers import database
 from qiprofile_rest_client.model.subject import (ImagingCollection, Subject)
 from qiprofile_rest_client.model.imaging import (
   Session, SessionDetail, Modeling, ModelingProtocol, Scan, ScanProtocol,
-  Registration, RegistrationProtocol, LabelMap, Volume
+  Registration, RegistrationProtocol, LabelMap, Image, Volumes, TimeSeries,
 )
 from qiprofile_rest_client.model.common import TumorExtent
 from qiprofile_rest_client.model.clinical import (
@@ -633,7 +633,7 @@ V_E_FILE_NAME = 'v_e_trans.nii.gz'
 
 TAU_I_FILE_NAME = 'tau_i_trans.nii.gz'
 
-COLOR_TABLE_FILE_NAME = 'etc/jet_colors.txt'
+COLOR_TABLE_FILE_NAME = '/etc/jet_colors.txt'
 
 
 def _create_session(collection, subject, session_number):
@@ -718,11 +718,13 @@ def _create_modeling(subject, session_number):
                     source=Modeling.Source(registration=PROTOCOLS.ants),
                     resource=resource, result=result)
 
+
 SESSION_OFFSET_RANGES = dict(
     Breast=[(0, 5), (10, 15), (25, 30), (50,60)],
     Sarcoma=[(0, 5), (10, 20), (40,50)]
 )
 """The range of offsets from the initial date for the breast scan dates. """
+
 
 def _create_session_date(subject, session_number):
     date_range = SESSION_OFFSET_RANGES[subject.collection][session_number - 1]
@@ -733,121 +735,77 @@ def _create_session_date(subject, session_number):
 def _create_t1_scan(collection, subject, session_number, bolus_arrival_index):
     # The number of test volumes to create.
     vol_cnt = collection.options.volume_count
-    # Make the volume image file names.
-    filenames = [_scan_filename(subject, session_number, 1, i+1)
-                 for i in range(vol_cnt)]
+    # Make the volume image filenames.
+    filenames = [_volume_basename(i+1) for i in range(vol_cnt)]
     # Make the average intensity values.
     intensities = _create_intensities(vol_cnt, bolus_arrival_index)
     # Add a motion artifact.
     _add_motion_artifact(intensities)
-    # Make the volumes.
-    volumes = [Volume(name=filenames[i], average_intensity=intensities[i])
+    # Make the volume images.
+    scan_images = [Image(name=filenames[i], average_intensity=intensities[i])
                for i in range(vol_cnt)]
+    volumes = Volumes(name='NIFTI', images=scan_images)
+    
+    # The time series.
+    ts_image = Image(name='scan_ts.nii.gz')
+    time_series = TimeSeries(name='scan_ts', image=ts_image)
 
     # Make the T1 registration.
     reg = _create_registration(collection, subject, session_number,
                                bolus_arrival_index)
 
     return Scan(number=1, protocol=PROTOCOLS.t1, volumes=volumes,
-                registrations=[reg])
+                time_series=time_series, registrations=[reg])
 
 
 def _create_t2_scan(collection, subject, session_number):
-    # Make the volume image file names.
-    filename = _scan_filename(subject, session_number, 2, 1)
-    # Make the volume.
-    volumes = [Volume(name=filename)]
+    # Make the volume image base name.
+    filename = _volume_basename(1)
+    image = Image(name=filename)
+    # Make the volumes singleton.
+    volumes = Volumes(name='NIFTI', images=[image])
 
     return Scan(number=2, protocol=PROTOCOLS.t2, volumes=volumes)
 
 
-def _create_registration(collection, subject, session_number, bolus_arrival_index):
+def _create_registration(collection, subject, session_number,
+                         bolus_arrival_index):
     # The number of test volumes to create.
     vol_cnt = collection.options.volume_count
     # The XNAT resource name.
     resource = "reg_%s" % uid.generate_string_uid()
-    # Make the volume image file names.
-    filenames = [_registration_filename(subject, session_number, resource, i+1)
-                 for i in range(vol_cnt)]
+    # Make the volume image file base names.
+    filenames = [_volume_basename(i+1) for i in range(vol_cnt)]
     # Make the average intensity values.
     intensities = _create_intensities(vol_cnt, bolus_arrival_index)
-    # Make the volumes.
-    volumes = [Volume(name=filenames[i], average_intensity=intensities[i])
-               for i in range(vol_cnt)]
+    # Make the 3D volume images.
+    reg_images = [Image(name=filenames[i], average_intensity=intensities[i])
+                  for i in range(vol_cnt)]
+    volumes = Volumes(name=resource, images=reg_images)
 
-    return Registration(protocol=PROTOCOLS.ants, resource=resource, volumes=volumes)
+    # The 4D time series.
+    ts_basename = "%s_ts.nii.gz" % resource
+    ts_image = Image(name=ts_basename)
+    time_series = TimeSeries(name=resource, image=ts_image)
 
-
-SESSION_TMPL = "data/%s/arc001/%s%03d_Session%02d/"
-
-SCAN_FILE_TMPL = "volume%03d.nii.gz"
-
-REG_FILE_TMPL = "volume%03d.nii.gz"
-
-SCAN_TMPL = SESSION_TMPL + "SCANS/%d/NIFTI/" + SCAN_FILE_TMPL
-
-RESOURCE_TMPL = SESSION_TMPL + "RESOURCES/%s/%s"
+    return Registration(protocol=PROTOCOLS.ants, volumes=volumes,
+                        time_series=time_series)
 
 
-def _scan_filename(subject, session, scan, volume):
+VOLUME_BASENAME_TMPL = "volume%03d.nii.gz"
+
+def _volume_basename(volume):
     """
-    Creates the file name for the given scan volume hierarchy. The file
-    name is given by:
-
-    ``data/``*project*``/``*subject*``/``*session*``/scan/``*scan*``/volume``*volume*``.nii.gz``
-
-    e.g.::
-
-        data/QIN_Test/Breast003/Session02/scan/2/volume002.nii.gz
+    Creates the file base name for the given scan volume hierarchy. The
+    base name is given by ``volume``*volume*``.nii.gz``, where *volume*
+    is the zero-padded volume number, e.g. ``volume002.nii.gz``.
 
     :param subject: the Subject object
     :param session: the session number
     :param scan: the scan number
     :param volume: the volume number
     """
-    return SCAN_TMPL % (subject.project, subject.collection, subject.number,
-                        session, scan, volume)
-
-
-def _registration_filename(subject, session, resource, volume):
-    """
-    Creates the file name for the given registration volume hierarchy.
-    The file name is given by:
-
-    ``data/``*project*``/``*subject*``/``*session*``/resource/``*resource*``/volume``*volume*``.nii.gz``
-
-    e.g.::
-
-        data/QIN_Test/Breast003/Session02/resource/reg_uHjY3/volume002.nii.gz
-
-    :param subject: the Subject object
-    :param session: the session number
-    :param resource: the registration resource name
-    :param volume: the volume number
-    """
-    filename = REG_FILE_TMPL % volume
-
-    return _resource_filename(subject, session, resource, filename)
-
-
-def _resource_filename(subject, session, resource, filename):
-    """
-    Creates the file name for the given resource hierarchy and file base name.
-    The file name is given by:
-
-    ``data/``*project*``/``*subject*``/``*session*``/resource/``*resource*``/``*filename*
-
-    e.g.::
-
-        data/QIN_Test/Breast003/Session02/resource/reg_uHjY3/volume002.nii.gz
-
-    :param subject: the Subject object
-    :param session: the session number
-    :param resource: the resource name
-    :param filename: the resource file base name
-    """
-    return RESOURCE_TMPL % (subject.project, subject.collection,
-                            subject.number, session, resource, filename)
+    return VOLUME_BASENAME_TMPL % volume
 
 
 def _create_label_map(modeling_file):

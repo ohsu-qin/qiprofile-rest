@@ -310,19 +310,19 @@ class TestSeed(object):
         scan = scans[0]
         coll = seed.collection_for(subject.collection)
         expected_volume_cnt = coll.options.volume_count
-        assert_equal(len(scan.volumes), expected_volume_cnt,
+        assert_equal(len(scan.volumes.images), expected_volume_cnt,
                      "%s session %d scan %d volumes count is incorrect: %d" %
-                     (subject, session.number, scan.number, len(scan.volumes)))
-        for i, volume in enumerate(scan.volumes):
-            assert_is_not_none(volume.average_intensity,
+                     (subject, session.number, scan.number, len(scan.volumes.images)))
+        for i, image in enumerate(scan.volumes.images):
+            assert_is_not_none(image.average_intensity,
                                "%s session %d scan %d volume %d is missing an intensity" %
                                (subject, session.number, scan.number, i + 1))
             # Verify that intensities are floats.
-            assert_true(isinstance(volume.average_intensity, float),
+            assert_true(isinstance(image.average_intensity, float),
                         "%s session %d scan %d volume %d intensity type is"
                         " incorrect for value %s: %s" %
                         (subject, session.number, scan.number, i + 1,
-                         volume.average_intensity, volume.average_intensity.__class__))
+                         image.average_intensity, image.average_intensity.__class__))
 
         # Validate the registration.
         regs = scan.registrations
@@ -330,27 +330,27 @@ class TestSeed(object):
                                     " is incorrect: %d" %
                                     (subject, session.number, scan.number, len(regs)))
         for reg in regs:
-            for i, volume in enumerate(reg.volumes):
-                assert_is_not_none(volume.average_intensity,
+            for i, image in enumerate(reg.volumes.images):
+                assert_is_not_none(image.average_intensity,
                                    "%s session %d scan %d registration %s volume %d"
                                    " is missing an intensity" %
-                                   (subject, session.number, scan.number, reg.resource,
-                                    i + 1))
+                                   (subject, session.number, scan.number,
+                                    reg.volumes.name, i + 1))
                 # Verify that intensities are floats.
-                assert_true(isinstance(volume.average_intensity, float),
+                assert_true(isinstance(image.average_intensity, float),
                             "%s session %d scan %d registration %s volume %d"
                             " intensity type is incorrect for value %s: %s" %
-                            (subject, session.number, scan.number, reg.resource,
-                             i + 1, volume.average_intensity,
-                             volume.average_intensity.__class__))
+                            (subject, session.number, scan.number, reg.volumes.name,
+                             i + 1, image.average_intensity,
+                             image.average_intensity.__class__))
 
         # The T2 scan has one volume without an intensity value.
         scan = scans[1]
-        assert_equal(len(scan.volumes), 1,
+        assert_equal(len(scan.volumes.images), 1,
                      "%s session %d scan %d volumes count is incorrect: %d" %
-                     (subject, session.number, scan.number, len(scan.volumes)))
-        volume = scan.volumes[0]
-        assert_is_none(volume.average_intensity,
+                     (subject, session.number, scan.number, len(scan.volumes.images)))
+        image = scan.volumes.images[0]
+        assert_is_none(image.average_intensity,
                        "%s session %d scan %d volume %d incorrectly has an intensity" %
                        (subject, session.number, scan.number, 1))
 
