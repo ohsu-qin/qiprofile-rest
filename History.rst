@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+5.7.4 / 2016-03-22
+------------------
+* Upgrade the Eve and pymongo versions.
+
 5.7.3 / 2016-03-18
 ------------------
 * Pick up REST data model Resource changes.
