@@ -755,7 +755,8 @@ def _create_t1_scan(collection, subject, session_number, bolus_arrival_index):
                                bolus_arrival_index)
     
     return Scan(number=1, protocol=PROTOCOLS.t1, volumes=volumes,
-                time_series=time_series, registrations=[reg])
+                time_series=time_series, registrations=[reg],
+                bolus_arrival_index=bolus_arrival_index)
 
 
 def _create_t2_scan(collection, subject, session_number):
