@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+5.7.5 / 2016-04-26
+------------------
+* Set the seed bolus arrival index.
+
 5.7.4 / 2016-03-22
 ------------------
 * Upgrade the Eve and pymongo versions.
@@ -30,7 +34,7 @@ for change details.
 * Add colorizations.
 
 5.6.4 / 2015-12-23
-------------------
+-----------------
 * Adapt seed to the REST data model v5.9.1 imaging changes.
 
 5.6.3 / 2015-11-04
