@@ -1,6 +1,8 @@
 #!/usr/bin/env python
+import sys
 import os
 import re
+import argparse
 from datetime import (datetime, timedelta)
 import pytz
 import random
@@ -26,7 +28,7 @@ from qiprofile_rest_client.model.clinical import (
 )
 from qiprofile_rest.server import settings
 
-PROJECT = 'QIN_Test'
+DEFAULT_PROJECT = 'QIN_Test'
 """The test/dev project name."""
 
 CONNECT_SETTINGS = dict(
@@ -369,7 +371,7 @@ The following protocols:
 """
 
 
-def seed():
+def seed(project=None):
     """
     Populates the currently connected MongoDB database with three
     subjects each of the :const:`COLLECTIONS`.
@@ -380,11 +382,15 @@ def seed():
       retained. Protocols are created on demand if no matching
       protocol is found.
     
-    :return: a list consisting of three :const:`PROJECT` subjects for
+    :param project: the name of the project to seed
+        (default ``QIN_TEST``)
+    :return: a list consisting of three *project* subjects for
         each collection in :const:`COLLECTIONS`
     """
+    if not project:
+        project = DEFAULT_PROJECT
     # Clear out the old content, if any.
-    clear()
+    clear(project)
     # Initialize the pseudo-random generator.
     random.seed()
     # Make the protocols.
@@ -396,34 +402,53 @@ def seed():
     # loop below.
     coll_sbjs = []
     for coll in COLLECTIONS:
-        coll_sbjs.extend(_seed_collection(coll))
+        coll_sbjs.extend(_seed_collection(project, coll))
     
     return coll_sbjs
 
 
-def clear():
+def mock_clinical(project):
+    """
+    Populates the currently connected MongoDB database subjects with
+    clinical data.
+    """
+    # Initialize the pseudo-random generator.
+    random.seed()
+    # The existing subjects.
+    sbjs = Subject.objects(project=project)
+    for sbj in sbjs:
+        # Clear the existing clinical data.
+        cln = list(sbj.clinical_encounters)
+        if cln:
+            sbj.encounters = list(sbj.sessions)
+        # Add the new clinical data.
+        _add_mock_clinical(sbj)
+        sbj.save()
+
+
+def clear(project):
     """Removes the seeded documents."""
     for coll in COLLECTIONS:
-        _clear_collection(coll.name)
+        _clear_collection(project, coll.name)
 
 
-def _seed_collection(collection):
+def _seed_collection(project, collection):
     # Make the collection database object.
     opts = {attr: val for attr, val in collection.options.iteritems()
             if attr in ImagingCollection._fields}
-    coll = ImagingCollection(project=PROJECT,
+    coll = ImagingCollection(project=project,
                              name=collection.name,
                              **opts)
     coll.save()
     # Make and return the subjects.
-    return [_seed_subject(collection, sbj_nbr)
+    return [_seed_subject(project, collection, sbj_nbr)
             for sbj_nbr in range(1, 4)]
 
 
-def _clear_collection(collection):
+def _clear_collection(project, collection):
     for sbj_nbr in range(1, 4):
         try:
-            sbj = Subject.objects.get(number=sbj_nbr, project=PROJECT,
+            sbj = Subject.objects.get(number=sbj_nbr, project=project,
                                       collection=collection)
             sbj.delete()
         except Subject.DoesNotExist:
@@ -435,7 +460,7 @@ def _clear_collection(collection):
         pass
 
 
-def _seed_subject(collection, subject_number):
+def _seed_subject(project, collection, subject_number):
     """
     If the given subject is already in the database, then the
     subject is ignored. Otherwise, a new subject is created
@@ -446,10 +471,10 @@ def _seed_subject(collection, subject_number):
     :return: the subject with the given collection and number
     """
     try:
-        sbj = Subject.objects.get(number=subject_number, project=PROJECT,
+        sbj = Subject.objects.get(number=subject_number, project=project,
                                   collection=collection.name)
     except Subject.DoesNotExist:
-        sbj = _create_subject(collection, subject_number)
+        sbj = _create_subject(project, collection, subject_number)
     
     return sbj
 
@@ -482,11 +507,36 @@ def _create_protocols():
     
     return dict(t1=t1, t2=t2, bolero=bolero, ants=ants)
 
-def _create_subject(collection, subject_number):
+
+def _create_subject(project, collection, subject_number):
     # The subject with just a secondary key.
-    subject = Subject(project=PROJECT, collection=collection.name,
+    subject = Subject(project=project, collection=collection.name,
                       number=subject_number)
     
+    # Start with the MR sessions.
+    subject.encounters = [_create_session(collection, subject, i + 1)
+                          for i in range(collection.options.visit_count)]
+    
+    # Fabricate the clinical data.
+    _add_mock_clinical(subject)
+    
+    # Save the subject.
+    subject.save()
+    
+    return subject
+
+
+def _add_mock_clinical(subject):
+    """
+    Adds clinical data to the given subject.
+    
+    :param subject: the subject to update
+    """
+    # The subject collection.
+    collection = collection_for(subject.collection)
+    # The imaging sessions.
+    sessions = list(subject.sessions)
+
     # The patient demographics.
     yr = _random_int(1950, 1980)
     subject.birth_date = datetime(yr, 7, 7, tzinfo=pytz.utc)
@@ -496,10 +546,6 @@ def _create_subject(collection, subject_number):
     subject.ethnicity = _choose_ethnicity()
     # The gender is roughly split.
     subject.gender = _choose_gender(collection)
-    
-    # The sessions.
-    sessions = [_create_session(collection, subject, i + 1)
-                for i in range(collection.options.visit_count)]
     
     # The neodjuvant treatment starts a few days after the first visit.
     offset = _random_int(0, 3)
@@ -581,13 +627,8 @@ def _create_subject(collection, subject_number):
         surgery = Surgery(date=surgery_date, weight=weight,
                           pathology=surgery_path)
     
-    # Add the encounters.
+    # Set the encounters.
     subject.encounters = sessions + [biopsy, surgery]
-    
-    # Save the subject.
-    subject.save()
-    
-    return subject
 
 
 def _choose_race():
@@ -897,6 +938,34 @@ def _connect():
     connect(**kwargs)
 
 
-if __name__ == "__main__":
+def main(argv=sys.argv):
+    # Parse the command line arguments.
+    opts = _parse_arguments()
+    # Connect to the database.
     _connect()
-    seed()
+    # The project name.
+    project = opts.get('project', DEFAULT_PROJECT)
+    # If the clinical flag is set, then only add clinical data.
+    # Otherwise, create new subjects with imaging and clinical data.
+    if opts.get('clinical'):
+        mock_clinical(project)
+    else:
+        seed(project)
+
+
+def _parse_arguments():
+    """Parses the command line arguments."""
+    parser = argparse.ArgumentParser()
+    env_grp = parser.add_mutually_exclusive_group()
+    env_grp.add_argument('--clinical', action='store_true',
+                         help="Add mock clinical data to existing subjects")
+    env_grp.add_argument('--project', help="the project to seed (default QIN_TEST)")
+
+    args = vars(parser.parse_args())
+    nonempty_args = dict((k, v) for k, v in args.iteritems() if v != None)
+
+    return nonempty_args
+
+
+if __name__ == "__main__":
+    sys.exit(main())
