@@ -2,4 +2,4 @@ bunch
 Eve-Mongoengine
 pytz
 qiutil
-qiprofile_rest_client
+qirest_client

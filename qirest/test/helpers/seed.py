@@ -12,22 +12,22 @@ from bunch import (Bunch, bunchify)
 from mongoengine import connect
 from qiutil import uid
 from qiutil.file import splitexts
-from qiprofile_rest_client.helpers import database
-from qiprofile_rest_client.model.subject import (ImagingCollection, Subject)
-from qiprofile_rest_client.model.imaging import (
+from qirest_client.helpers import database
+from qirest_client.model.subject import (ImagingCollection, Subject)
+from qirest_client.model.imaging import (
   Session, SessionDetail, Modeling, ModelingProtocol, Scan, ScanProtocol,
   Registration, RegistrationProtocol, LabelMap, Image, MultiImageResource,
   SingleImageResource
 )
-from qiprofile_rest_client.model.common import TumorExtent
-from qiprofile_rest_client.model.clinical import (
+from qirest_client.model.common import TumorExtent
+from qirest_client.model.clinical import (
   Treatment, Drug, Dosage, Biopsy, Surgery, PathologyReport, TNM,
   TumorLocation, BreastSurgery, BreastPathology, ResidualCancerBurden,
   HormoneReceptorStatus, BreastGeneticExpression, BreastNormalizedAssay,
   ModifiedBloomRichardsonGrade, SarcomaPathology, FNCLCCGrade,
   NecrosisPercentValue, NecrosisPercentRange, necrosis_percent_as_score
 )
-from qiprofile_rest.server import settings
+from qirest.server import settings
 
 DEFAULT_PROJECT = 'QIN_Test'
 """The test/dev project name."""
@@ -936,7 +936,7 @@ def _connect():
     Connects to the Eve server with keywords obtained from the
     server settings. The connect keyword parameters consist of
     the :const:`CONNECT_SETTINGS` item keys whose item value is
-    defined as a constant in the :mod:`qiprofile_rest.server.settings`.
+    defined as a constant in the :mod:`qirest.server.settings`.
     The keyword parameter values are the corresponding settings
     constant value.
     """

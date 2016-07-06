@@ -1,5 +1,5 @@
 ========================================================
-qiprofile-rest: Quantitative Imaging Profile REST server
+qirest: Quantitative Imaging Profile REST server
 ========================================================
 
 ********
@@ -8,9 +8,9 @@ Synopsis
 The Quantitative Imaging Profile REST server serves data for the
 QuIP_ (antitative Imaging Profile) web application.
 
-:API: https://qiprofile-rest.readthedocs.org/en/latest/api/index.html
+:API: https://qirest.readthedocs.org/en/latest/api/index.html
 
-:Git: https://github.com/ohsu-qin/qiprofile-rest
+:Git: https://github.com/ohsu-qin/qirest
 
 
 ************
@@ -20,9 +20,9 @@ Installation
 
 2. Install MongoDB_, if necessary. Use the default WiredTiger storage engine.
 
-3. Install ``qiprofile-rest``::
+3. Install ``qirest``::
 
-       pip install qiprofile-rest
+       pip install qirest
 
 
 *****
@@ -64,9 +64,9 @@ The project is cloned, tested, documented and released as described in
 the `qipipe`_ documentation Development section.
 
 A sample database can be created by running the following command in
-the local ``qiprofile-rest`` project directory::
+the local ``qirest`` project directory::
 
-    ./qiprofile_rest/test/helpers/seed.py
+    ./qirest/test/helpers/seed.py
 
 ---------
 
@@ -89,6 +89,6 @@ the local ``qiprofile-rest`` project directory::
 
 .. _qipipe: qipipe.readthedocs.org/en/latest/
 
-.. _REST client: qiprofile-rest-client.readthedocs.org/en/latest/
+.. _REST client: qirest-client.readthedocs.org/en/latest/
 
 .. _QuIP: https://github.com/ohsu-qin/qiprofile

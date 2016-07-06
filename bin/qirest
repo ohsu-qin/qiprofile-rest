@@ -6,7 +6,7 @@ Starts the Quantitaive Imaging Profile REST server.
 import sys
 import os
 import argparse
-from qiprofile_rest.server.spawn import spawn
+from qirest.server.spawn import spawn
 
 def main(argv=sys.argv):
     # Parse the command line arguments.

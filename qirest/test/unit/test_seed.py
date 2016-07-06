@@ -3,10 +3,10 @@ from nose.tools import (assert_is_none, assert_is_instance, assert_in,
                         assert_equal)
 from datetime import datetime
 from mongoengine import connect
-from qiprofile_rest_client.model.subject import Subject
-from qiprofile_rest_client.model.uom import Weight
-from qiprofile_rest_client.model.clinical import (Biopsy, Surgery, Drug)
-from qiprofile_rest.test.helpers import seed
+from qirest_client.model.subject import Subject
+from qirest_client.model.uom import Weight
+from qirest_client.model.clinical import (Biopsy, Surgery, Drug)
+from qirest.test.helpers import seed
 
 MODELING_RESULT_PARAMS = ['fxl_k_trans', 'fxr_k_trans', 'delta_k_trans', 'v_e', 'tau_i']
 """The test seed modeling result parameters."""
