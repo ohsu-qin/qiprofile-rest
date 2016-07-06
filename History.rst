@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+5.8.1 / 2016-07-06
+------------------
+* Add --clinical and --project seed options.
+
 5.7.5 / 2016-04-26
 ------------------
 * Set the seed bolus arrival index.
