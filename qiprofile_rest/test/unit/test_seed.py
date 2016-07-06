@@ -279,11 +279,16 @@ class TestSeed(object):
             assert_is_not_none(value,
                                "%s Subject %d modeling %s is missing a %s parameter" %
                                (subject.collection, subject.number, modeling.resource, param))
-            assert_is_not_none(value.average,
-                               "%s Subject %d modeling %s is missing a %s average" %
+            assert_is_not_none(value.image,
+                               "%s Subject %d modeling %s is missing a %s image" %
                                (subject.collection, subject.number, modeling.resource, param))
-            assert_is_not_none(value.name,
-                               "%s Subject %d modeling %s is missing a %s filename" %
+            metadata = value.image.metadata
+            assert_is_not_none(metadata,
+                               "%s Subject %d modeling %s is missing %s metadata" %
+                               (subject.collection, subject.number, modeling.resource, param))
+            avg = metadata.get('average_intensity')
+            assert_is_not_none(avg,
+                               "%s Subject %d modeling %s is missing %s intensity" %
                                (subject.collection, subject.number, modeling.resource, param))
 
         # The delta Ktrans result has an overlay.
@@ -314,15 +319,18 @@ class TestSeed(object):
                      "%s session %d scan %d volumes count is incorrect: %d" %
                      (subject, session.number, scan.number, len(scan.volumes.images)))
         for i, image in enumerate(scan.volumes.images):
-            assert_is_not_none(image.average_intensity,
+            assert_is_not_none(image.metadata,
+                               "%s session %d scan %d volume %d is missing metadata" %
+                               (subject, session.number, scan.number, i + 1))
+            avg = image.metadata.get('average_intensity')
+            assert_is_not_none(avg,
                                "%s session %d scan %d volume %d is missing an intensity" %
                                (subject, session.number, scan.number, i + 1))
             # Verify that intensities are floats.
-            assert_true(isinstance(image.average_intensity, float),
+            assert_true(isinstance(avg, float),
                         "%s session %d scan %d volume %d intensity type is"
                         " incorrect for value %s: %s" %
-                        (subject, session.number, scan.number, i + 1,
-                         image.average_intensity, image.average_intensity.__class__))
+                        (subject, session.number, scan.number, i + 1, avg, avg.__class__))
 
         # Validate the registration.
         regs = scan.registrations
@@ -331,18 +339,22 @@ class TestSeed(object):
                                     (subject, session.number, scan.number, len(regs)))
         for reg in regs:
             for i, image in enumerate(reg.volumes.images):
-                assert_is_not_none(image.average_intensity,
+                assert_is_not_none(image.metadata,
+                                   "%s session %d scan %d registration %s volume %d"
+                                   " is missing metadata" %
+                                   (subject, session.number, scan.number,
+                                    reg.volumes.name, i + 1))
+                avg = image.metadata.get('average_intensity')
+                assert_is_not_none(avg,
                                    "%s session %d scan %d registration %s volume %d"
                                    " is missing an intensity" %
                                    (subject, session.number, scan.number,
                                     reg.volumes.name, i + 1))
-                # Verify that intensities are floats.
-                assert_true(isinstance(image.average_intensity, float),
-                            "%s session %d scan %d registration %s volume %d"
-                            " intensity type is incorrect for value %s: %s" %
+                assert_true(isinstance(avg, float),
+                            "%s session %d scan %d registration %s volume %d intensity"
+                            " type is incorrect for value %s: %s" %
                             (subject, session.number, scan.number, reg.volumes.name,
-                             i + 1, image.average_intensity,
-                             image.average_intensity.__class__))
+                             i + 1, avg, avg.__class__))
 
         # The T2 scan has one volume without an intensity value.
         scan = scans[1]
@@ -350,9 +362,9 @@ class TestSeed(object):
                      "%s session %d scan %d volumes count is incorrect: %d" %
                      (subject, session.number, scan.number, len(scan.volumes.images)))
         image = scan.volumes.images[0]
-        assert_is_none(image.average_intensity,
-                       "%s session %d scan %d volume %d incorrectly has an intensity" %
-                       (subject, session.number, scan.number, 1))
+        assert_true(not image.metadata,
+                       "%s session %d scan %d volume incorrectly has metadata" %
+                       (subject, session.number, scan.number))
 
 
 if __name__ == "__main__":

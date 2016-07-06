@@ -16,7 +16,8 @@ from qiprofile_rest_client.helpers import database
 from qiprofile_rest_client.model.subject import (ImagingCollection, Subject)
 from qiprofile_rest_client.model.imaging import (
   Session, SessionDetail, Modeling, ModelingProtocol, Scan, ScanProtocol,
-  Registration, RegistrationProtocol, LabelMap, Image, Volumes, TimeSeries,
+  Registration, RegistrationProtocol, LabelMap, Image, MultiImageResource,
+  SingleImageResource
 )
 from qiprofile_rest_client.model.common import TumorExtent
 from qiprofile_rest_client.model.clinical import (
@@ -722,34 +723,41 @@ def _create_modeling(subject, session_number):
     # Add modeling parameters with a random offset.
     factor = 1 + ((random.random() - 0.5) * 0.4)
     fxl_k_trans_avg = FXL_K_TRANS_AVG * factor
-    fxl_k_trans_label_map = _create_label_map(FXR_K_TRANS_FILE_NAME)
-    fxl_k_trans = Modeling.ParameterResult(average=fxl_k_trans_avg,
-                                           name=FXL_K_TRANS_FILE_NAME,
+    fxl_k_trans_label_map = _create_label_map(FXL_K_TRANS_FILE_NAME)
+    fxl_k_trans_img = Image(name=FXL_K_TRANS_FILE_NAME,
+                            metadata=dict(average_intensity=fxl_k_trans_avg))
+    fxl_k_trans = Modeling.ParameterResult(image=fxl_k_trans_img,
                                            label_map=fxl_k_trans_label_map)
     
     factor = DELTA_K_TRANS_FACTOR + ((random.random() - 0.5) * 0.4)
     fxr_k_trans_avg = fxl_k_trans_avg * factor
     fxr_k_trans_label_map = _create_label_map(FXR_K_TRANS_FILE_NAME)
-    fxr_k_trans = Modeling.ParameterResult(average=fxr_k_trans_avg,
-                                           name=FXR_K_TRANS_FILE_NAME,
+    fxr_k_trans_img = Image(name=FXR_K_TRANS_FILE_NAME,
+                            metadata=dict(average_intensity=fxr_k_trans_avg))
+    fxr_k_trans = Modeling.ParameterResult(image=fxr_k_trans_img,
                                            label_map=fxr_k_trans_label_map)
     
     delta_k_trans_avg = fxl_k_trans_avg - fxr_k_trans_avg
     delta_k_trans_label_map = _create_label_map(DELTA_K_TRANS_FILE_NAME)
-    delta_k_trans = Modeling.ParameterResult(average=delta_k_trans_avg,
-                                             name=DELTA_K_TRANS_FILE_NAME,
+    delta_k_trans_img = Image(name=DELTA_K_TRANS_FILE_NAME,
+                            metadata=dict(average_intensity=delta_k_trans_avg))
+    delta_k_trans = Modeling.ParameterResult(image=delta_k_trans_img,
                                              label_map=delta_k_trans_label_map)
     
     offset = (0.5 - random.random()) * 0.2
     v_e_avg = V_E_0 + offset
     v_e_label_map = _create_label_map(V_E_FILE_NAME)
-    v_e = Modeling.ParameterResult(average=v_e_avg, name=V_E_FILE_NAME,
+    v_e_img = Image(name=V_E_FILE_NAME,
+                    metadata=dict(average_intensity=v_e_avg))
+    v_e = Modeling.ParameterResult(image=v_e_img,
                                    label_map=v_e_label_map)
     
     offset = (0.5 - random.random()) * 0.2
     tau_i_avg = TAU_I_0 + offset
     tau_i_label_map = _create_label_map(TAU_I_FILE_NAME)
-    tau_i = Modeling.ParameterResult(average=tau_i_avg, name=TAU_I_FILE_NAME,
+    tau_i_img = Image(name=TAU_I_FILE_NAME,
+                      metadata=dict(average_intensity=tau_i_avg))
+    tau_i = Modeling.ParameterResult(image=tau_i_img,
                                      label_map=tau_i_label_map)
     
     result = dict(fxl_k_trans=fxl_k_trans, fxr_k_trans=fxr_k_trans,
@@ -783,13 +791,14 @@ def _create_t1_scan(collection, subject, session_number, bolus_arrival_index):
     # Add a motion artifact.
     _add_motion_artifact(intensities)
     # Make the volume images.
-    scan_images = [Image(name=filenames[i], average_intensity=intensities[i])
-               for i in range(vol_cnt)]
-    volumes = Volumes(name='NIFTI', images=scan_images)
+    scan_images = [Image(name=filenames[i],
+                         metadata=dict(average_intensity=intensities[i]))
+                   for i in range(vol_cnt)]
+    volumes = MultiImageResource(name='NIFTI', images=scan_images)
     
     # The time series.
     ts_image = Image(name='scan_ts.nii.gz')
-    time_series = TimeSeries(name='scan_ts', image=ts_image)
+    time_series = SingleImageResource(name='scan_ts', image=ts_image)
     
     # Make the T1 registration.
     reg = _create_registration(collection, subject, session_number,
@@ -805,7 +814,7 @@ def _create_t2_scan(collection, subject, session_number):
     filename = _volume_basename(1)
     image = Image(name=filename)
     # Make the volumes singleton.
-    volumes = Volumes(name='NIFTI', images=[image])
+    volumes = MultiImageResource(name='NIFTI', images=[image])
     
     return Scan(number=2, protocol=PROTOCOLS.t2, volumes=volumes)
 
@@ -821,14 +830,15 @@ def _create_registration(collection, subject, session_number,
     # Make the average intensity values.
     intensities = _create_intensities(vol_cnt, bolus_arrival_index)
     # Make the 3D volume images.
-    reg_images = [Image(name=filenames[i], average_intensity=intensities[i])
+    reg_images = [Image(name=filenames[i],
+                        metadata=dict(average_intensity=intensities[i]))
                   for i in range(vol_cnt)]
-    volumes = Volumes(name=resource, images=reg_images)
+    volumes = MultiImageResource(name=resource, images=reg_images)
     
     # The 4D time series.
     ts_basename = "%s_ts.nii.gz" % resource
     ts_image = Image(name=ts_basename)
-    time_series = TimeSeries(name=resource, image=ts_image)
+    time_series = SingleImageResource(name=resource, image=ts_image)
     
     return Registration(protocol=PROTOCOLS.ants, volumes=volumes,
                         time_series=time_series)
