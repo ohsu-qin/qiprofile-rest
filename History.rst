@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+6.1.1 / 2016-07-06
+------------------
+* Rename from qiprofile-rest to qirest.
+
 5.8.1 / 2016-07-06
 ------------------
 * Add --clinical and --project seed options.
