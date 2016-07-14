@@ -49,7 +49,7 @@ class TestSeed(object):
                                        (expected, actual))
 
     def _validate_subject(self, subject):
-        collections = ((coll.name for coll in seed.COLLECTIONS))
+        collections = ((coll.name for coll in seed.COLLECTION_BUILDERS))
         assert_in(subject.collection, collections,
                   "Collection is invalid: %s" % subject.collection)
         self._validate_demographics(subject)
@@ -313,7 +313,7 @@ class TestSeed(object):
 
         # The T1 scan.
         scan = scans[0]
-        coll = seed.collection_for(subject.collection)
+        coll = seed.builder_for(subject.collection)
         expected_volume_cnt = coll.options.volume_count
         assert_equal(len(scan.volumes.images), expected_volume_cnt,
                      "%s session %d scan %d volumes count is incorrect: %d" %

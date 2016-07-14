@@ -13,7 +13,7 @@ from mongoengine import connect
 from qiutil import uid
 from qiutil.file import splitexts
 from qirest_client.helpers import database
-from qirest_client.model.subject import (ImagingCollection, Subject)
+from qirest_client.model.subject import (Project, ImagingCollection, Subject)
 from qirest_client.model.imaging import (
   Session, SessionDetail, Modeling, ModelingProtocol, Scan, ScanProtocol,
   Registration, RegistrationProtocol, LabelMap, Image, MultiImageResource,
@@ -42,10 +42,24 @@ CONNECT_SETTINGS = dict(
 """The connection {parameter: constant} dictionary."""
 
 
-class Collection(object):
+class CollectionBuilder(object):
+    """The abstract collection builder superclass."""
+    
     def __init__(self, name, **opts):
         self.name = name
         self.options = bunchify(opts)
+
+    def choose_gender(self):
+        """
+        Returns a gender for this collection. The default is roughly
+        50% men and 50% women. Subclasses can override this method.
+        
+        :return: `Male` or `Female`
+        """
+        # Half of the subjects are male, half female.
+        index = _random_int(0, 1)
+
+        return Subject.GENDER_CHOICES[index]
     
     def create_grade(self, **opts):
         raise NotImplementedError("Subclass responsibility")
@@ -85,7 +99,7 @@ class Collection(object):
         return TNM(**tnm_content)
 
 
-class Breast(Collection):
+class Breast(CollectionBuilder):
     """
     The test Breast collection has four visits with 32 volumes each.
     """
@@ -95,6 +109,12 @@ class Breast(Collection):
             url='https://wiki.cancerimagingarchive.net/display/Public/QIN+Breast+DCE-MRI',
             visit_count=4, volume_count=32
         )
+
+    def choose_gender(self):
+        """
+        :return: `Female` always
+        """
+        return 'Female'
     
     def create_grade(self):
         """
@@ -246,7 +266,7 @@ class Breast(Collection):
         return BreastNormalizedAssay.Invasion(mmp11=mmp11, ctsl2=ctsl2)
 
 
-class Sarcoma(Collection):
+class Sarcoma(CollectionBuilder):
     """
     The test Sarcoma collection has three visits with 40 volumes each.
     
@@ -313,12 +333,12 @@ class Sarcoma(Collection):
         return SarcomaPathology(**values)
 
 
-COLLECTIONS = [Breast(), Sarcoma()]
+COLLECTION_BUILDERS = [Breast(), Sarcoma()]
 
 
-def collection_for(name):
+def builder_for(name):
     try:
-        return next((coll for coll in COLLECTIONS if coll.name == name))
+        return next((coll for coll in COLLECTION_BUILDERS if coll.name == name))
     except StopIteration:
         raise ValueError("The collection is not supported: %s" % name)
 
@@ -375,7 +395,7 @@ The following protocols:
 def seed(project=None):
     """
     Populates the currently connected MongoDB database with three
-    subjects each of the :const:`COLLECTIONS`.
+    subjects each of the :const:`COLLECTION_BUILDERS`.
     
     :Note: existing content which matches the seed content, including
       imaging collection objects, subjects and subject detail, is
@@ -386,7 +406,7 @@ def seed(project=None):
     :param project: the name of the project to seed
         (default ``QIN_TEST``)
     :return: a list consisting of three *project* subjects for
-        each collection in :const:`COLLECTIONS`
+        each collection in :const:`COLLECTION_BUILDERS`
     """
     if not project:
         project = DEFAULT_PROJECT
@@ -396,16 +416,8 @@ def seed(project=None):
     random.seed()
     # Make the protocols.
     PROTOCOLS.update(_create_protocols())
-    # Make the subjects.
-    # Note: itertools chain on a generator is preferable to iterate over
-    # the collections. This works in python 1.7.1, but not python 1.7.2.
-    # The work-around is to build up the subject collection in the for
-    # loop below.
-    coll_sbjs = []
-    for coll in COLLECTIONS:
-        coll_sbjs.extend(_seed_collection(project, coll))
     
-    return coll_sbjs
+    return _seed_project(project)
 
 
 def mock_clinical(project):
@@ -429,20 +441,40 @@ def mock_clinical(project):
 
 def clear(project):
     """Removes the seeded documents."""
-    for coll in COLLECTIONS:
+    for coll in COLLECTION_BUILDERS:
         _clear_collection(project, coll.name)
+    try:
+        prj = Project.objects.get(name=project)
+        prj.delete()
+    except Project.DoesNotExist:
+        pass
 
 
-def _seed_collection(project, collection):
+def _seed_project(project):
+    # Make the project database object.
+    prj = Project(name=project, description='Test project')
+    prj.save()
+    # Make the collections.
+    # Note: itertools chain on a generator is preferable to iterate over
+    # the collections. This works in python 1.7.1, but not python 1.7.2.
+    # The work-around is to build up the subject collection in the for
+    # loop below.
+    subjects = []
+    for builder in COLLECTION_BUILDERS:
+        subjects.extend(_seed_collection(project, builder))
+    return subjects
+
+
+def _seed_collection(project, builder):
     # Make the collection database object.
-    opts = {attr: val for attr, val in collection.options.iteritems()
+    opts = {attr: val for attr, val in builder.options.iteritems()
             if attr in ImagingCollection._fields}
-    coll = ImagingCollection(project=project,
-                             name=collection.name,
-                             **opts)
-    coll.save()
+    collection = ImagingCollection(project=project,
+                                   name=builder.name,
+                                   **opts)
+    collection.save()
     # Make and return the subjects.
-    return [_seed_subject(project, collection, sbj_nbr)
+    return [_seed_subject(project, builder, sbj_nbr)
             for sbj_nbr in range(1, 4)]
 
 
@@ -461,21 +493,21 @@ def _clear_collection(project, collection):
         pass
 
 
-def _seed_subject(project, collection, subject_number):
+def _seed_subject(project, builder, subject_number):
     """
     If the given subject is already in the database, then the
     subject is ignored. Otherwise, a new subject is created
     and populated with detail information.
     
-    :param collection: the subject collection
+    :param builder: the subject collection builder
     :param subject_number: the subject number
     :return: the subject with the given collection and number
     """
     try:
         sbj = Subject.objects.get(number=subject_number, project=project,
-                                  collection=collection.name)
+                                  collection=builder.name)
     except Subject.DoesNotExist:
-        sbj = _create_subject(project, collection, subject_number)
+        sbj = _create_subject(project, builder, subject_number)
     
     return sbj
 
@@ -509,14 +541,14 @@ def _create_protocols():
     return dict(t1=t1, t2=t2, bolero=bolero, ants=ants)
 
 
-def _create_subject(project, collection, subject_number):
+def _create_subject(project, builder, subject_number):
     # The subject with just a secondary key.
-    subject = Subject(project=project, collection=collection.name,
+    subject = Subject(project=project, collection=builder.name,
                       number=subject_number)
     
     # Start with the MR sessions.
-    subject.encounters = [_create_session(collection, subject, i + 1)
-                          for i in range(collection.options.visit_count)]
+    subject.encounters = [_create_session(builder, subject, i + 1)
+                          for i in range(builder.options.visit_count)]
     
     # Fabricate the clinical data.
     _add_mock_clinical(subject)
@@ -534,7 +566,7 @@ def _add_mock_clinical(subject):
     :param subject: the subject to update
     """
     # The subject collection.
-    collection = collection_for(subject.collection)
+    builder = builder_for(subject.collection)
     # The imaging sessions.
     sessions = list(subject.sessions)
 
@@ -546,7 +578,7 @@ def _add_mock_clinical(subject):
     # The ethnicity is None half of the time.
     subject.ethnicity = _choose_ethnicity()
     # The gender is roughly split.
-    subject.gender = _choose_gender(collection)
+    subject.gender = builder.choose_gender()
     
     # The neodjuvant treatment starts a few days after the first visit.
     offset = _random_int(0, 3)
@@ -558,7 +590,7 @@ def _add_mock_clinical(subject):
                        end_date=neo_rx_end)
     
     # The sample seed Breast patients have neodjuvant drugs.
-    if isinstance(collection, Breast):
+    if isinstance(builder, Breast):
         # trastuzumab.
         trast = Drug(name='trastuzumab')
         trast_amt = _random_float(20, 30)
@@ -596,27 +628,27 @@ def _add_mock_clinical(subject):
     # Force the first breast patient to be free of lymph nodes,
     # since we want at least one patient with a normalized assay.
     opts = {}
-    if isinstance(collection, Breast) and subject.number == 1:
+    if isinstance(builder, Breast) and subject.number == 1:
         opts['hormone_receptors'] = dict(estrogen=dict(positive=True))
         opts['tnm'] = dict(lymph_status=0)
     # The biopsy has a pathology report.
-    biopsy_tumor_path = collection.create_pathology(**opts)
+    biopsy_tumor_path = builder.create_pathology(**opts)
     biopsy_path = PathologyReport(tumors=[biopsy_tumor_path])
     # The initial weight is between 40 and 80 kg.
     weight = _random_int(40, 80)
     biopsy = Biopsy(date=biopsy_date, weight=weight, pathology=biopsy_path)
     
     # The surgery has a pathology report.
-    surgery_tumor_path = collection.create_pathology(**opts)
+    surgery_tumor_path = builder.create_pathology(**opts)
     # Only a breast resection pathology report measures the RCB.
-    if isinstance(collection, Breast):
-        surgery_tumor_path.rcb = collection.create_rcb()
+    if isinstance(builder, Breast):
+        surgery_tumor_path.rcb = builder.create_rcb()
     surgery_path = PathologyReport(tumors=[surgery_tumor_path])
     # The weight varies a bit from the initial weight with a bias
     # towards loss.
     weight += _random_int(-10, 5)
     # Breast surgery has a surgery type.
-    if isinstance(collection, Breast):
+    if isinstance(builder, Breast):
         # The surgery type.
         srg_type_ndx = _random_int(0, len(BreastSurgery.TYPE_CHOICES) - 1)
         surgery_type = BreastSurgery.TYPE_CHOICES[srg_type_ndx]
@@ -656,15 +688,6 @@ def _choose_ethnicity():
             return Subject.ETHNICITY_CHOICES[i][0]
 
 
-def _choose_gender(collection):
-    if collection.name == 'Breast':
-        return 'Female'
-    else:
-        # Half of the sarcoma subjects are male, half female.
-        index = _random_int(0, 1)
-        return Subject.GENDER_CHOICES[index]
-
-
 FXL_K_TRANS_FILE_NAME = 'fxl_k_trans.nii.gz'
 
 FXR_K_TRANS_FILE_NAME = 'fxr_k_trans.nii.gz'
@@ -678,7 +701,7 @@ TAU_I_FILE_NAME = 'tau_i_trans.nii.gz'
 COLOR_TABLE_FILE_NAME = '/etc/jet_colors.txt'
 
 
-def _create_session(collection, subject, session_number):
+def _create_session(builder, subject, session_number):
     """
     Returns a new Session object whose detail includes the following:
     * a T1 scan with a registration
@@ -688,7 +711,7 @@ def _create_session(collection, subject, session_number):
     # Stagger the inter-session duration.
     date = _create_session_date(subject, session_number)
     # Make the session detail.
-    detail = _create_session_detail(collection, subject, session_number)
+    detail = _create_session_detail(builder, subject, session_number)
     # Save the detail first, since it is not embedded and we need to
     # set the detail reference to make the session.
     detail.save()
@@ -698,7 +721,7 @@ def _create_session(collection, subject, session_number):
     return Session(date=date, modelings=[modelings], detail=detail)
 
 
-def _create_session_detail(collection, subject, session_number):
+def _create_session_detail(builder, subject, session_number):
     """
     Returns a new SessionDetail object which includes the following:
     * a T1 scan with a registration
@@ -708,8 +731,8 @@ def _create_session_detail(collection, subject, session_number):
     # The bolus arrival.
     arv = int(round((0.5 - random.random()) * 4)) + AVG_BOLUS_ARRIVAL_NDX
     # Make the scans.
-    t1 = _create_t1_scan(collection, subject, session_number, arv)
-    t2 = _create_t2_scan(collection, subject, session_number)
+    t1 = _create_t1_scan(builder, subject, session_number, arv)
+    t2 = _create_t2_scan(subject, session_number)
     scans = [t1, t2]
     
     # Return the session detail.
@@ -781,9 +804,9 @@ def _create_session_date(subject, session_number):
     return DATE_0 + timedelta(days=offset)
 
 
-def _create_t1_scan(collection, subject, session_number, bolus_arrival_index):
+def _create_t1_scan(builder, subject, session_number, bolus_arrival_index):
     # The number of test volumes to create.
-    vol_cnt = collection.options.volume_count
+    vol_cnt = builder.options.volume_count
     # Make the volume image filenames.
     filenames = [_volume_basename(i+1) for i in range(vol_cnt)]
     # Make the average intensity values.
@@ -801,7 +824,7 @@ def _create_t1_scan(collection, subject, session_number, bolus_arrival_index):
     time_series = SingleImageResource(name='scan_ts', image=ts_image)
     
     # Make the T1 registration.
-    reg = _create_registration(collection, subject, session_number,
+    reg = _create_registration(builder, subject, session_number,
                                bolus_arrival_index)
     
     return Scan(number=1, protocol=PROTOCOLS.t1, volumes=volumes,
@@ -809,7 +832,7 @@ def _create_t1_scan(collection, subject, session_number, bolus_arrival_index):
                 bolus_arrival_index=bolus_arrival_index)
 
 
-def _create_t2_scan(collection, subject, session_number):
+def _create_t2_scan(subject, session_number):
     # Make the volume image base name.
     filename = _volume_basename(1)
     image = Image(name=filename)
@@ -819,10 +842,10 @@ def _create_t2_scan(collection, subject, session_number):
     return Scan(number=2, protocol=PROTOCOLS.t2, volumes=volumes)
 
 
-def _create_registration(collection, subject, session_number,
+def _create_registration(builder, subject, session_number,
                          bolus_arrival_index):
     # The number of test volumes to create.
-    vol_cnt = collection.options.volume_count
+    vol_cnt = builder.options.volume_count
     # The XNAT resource name.
     resource = "reg_%s" % uid.generate_string_uid()
     # Make the volume image file base names.
