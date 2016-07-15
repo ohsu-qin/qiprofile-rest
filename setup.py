@@ -14,7 +14,7 @@ def version(package):
     
 
 def requires():
-    with open('requirements.txt') as f:
+    with open('constraints.txt') as f:
       return f.read().splitlines()
 
 

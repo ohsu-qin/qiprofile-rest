@@ -1,5 +1,7 @@
 bunch
+Eve
 Eve-Mongoengine
+pymongo
 pytz
 qiutil
-qirest_client
+qirest-client
