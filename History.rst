@@ -1,7 +1,11 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
-6.2.1 / 2016-07-15
+6.2.3 / 2016-07-15
+------------------
+* Downgrade Eve and pymongo to a working combination.
+
+6.2.2 / 2016-07-15
 ------------------
 * Add Eve to the dependencies.
 
