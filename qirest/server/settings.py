@@ -49,6 +49,9 @@ pswd = os.getenv('MONGO_PASSWORD')
 if pswd:
     MONGO_PASSWORD = pswd
 
+# Disable pagination.
+PAGINATION = False
+
 # Even though the domain is defined by the Eve MongoEngine
 # adapter, a DOMAIN setting is required by Eve. This setting
 # is only used to avoid an Eve complaint about a missing domain.
