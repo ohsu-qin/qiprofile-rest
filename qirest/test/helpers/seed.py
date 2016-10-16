@@ -208,7 +208,7 @@ class Breast(CollectionBuilder):
             positive =_random_boolean()
         )
         if values['positive']:
-            values['quick_score'] = _random_int(0, 8),
+            values['quick_score'] = _random_int(0, 8)
             values['intensity'] = _random_int(0, 100)
         # Override the defaults.
         values.update(opts)
@@ -935,7 +935,7 @@ def _random_int(low, high):
     :param high: the inclusive maximum value
     :return: a random integer in the inclusive [low, high] range
     """
-    return int(_random_float(low, high))
+    return int(round(_random_float(low, high)))
 
 
 def _random_float(low, high):
