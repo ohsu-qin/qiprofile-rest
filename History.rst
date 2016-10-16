@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+6.2.4 / 2016-10-15
+------------------
+* Make 32 subjects.
+
 6.2.3 / 2016-07-15
 ------------------
 * Downgrade Eve and pymongo to a working combination.
@@ -61,7 +65,7 @@ for change details.
 ------------------
 * Adapt seed to the REST data model ModelingProtocol parameters change.
 
-5.6.2 / 2015-10-26 
+5.6.2 / 2015-10-26
 ------------------
 * Correct the environment option help text.
 
