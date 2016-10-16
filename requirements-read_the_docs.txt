@@ -1,0 +1,15 @@
+# The requirements for a ReadTheDocs build only. This file is a subset
+# of the ``requirements.txt`` packages as required for documentation
+# generation.
+#
+# This requirement subset works around the following problems:
+#
+# * ReadTheDocs build fails on pymongo because of an over-zealous
+*   Eve dependency constraint.
+#
+bunch
+Eve
+Eve-Mongoengine
+pytz
+qiutil
+qirest-client
