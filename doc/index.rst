@@ -61,7 +61,7 @@ Development
 ***********
 
 The project is cloned, tested, documented and released as described in
-the `qipipe`_ documentation Development section[#rtd_requirements].
+the `qipipe`_ documentation Development section [#rtd_requirements]_.
 
 A sample database can be created by running the following command in
 the local ``qirest`` project directory::
