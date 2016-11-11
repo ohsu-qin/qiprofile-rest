@@ -43,7 +43,7 @@ Usage
 
    Alternatively, the server can be started in development mode with the
    ``--development`` option::
-   
+
         qirest --development
 
 
@@ -52,7 +52,7 @@ Usage
    The REST API is described in the `Eve Features`_ documentation. For
    example, the following command returns the JSON list of all subjects
    for a server running on the local machine::
-   
+
        curl -i http://localhost:5000/subject
 
 
@@ -87,8 +87,8 @@ the local ``qirest`` project directory::
 
 .. _Python: http://www.python.org
 
-.. _qipipe: qipipe.readthedocs.org/en/latest/
+.. _qipipe: http://qipipe.readthedocs.org/en/latest/
 
-.. _REST client: qirest-client.readthedocs.org/en/latest/
+.. _REST client: http://qirest-client.readthedocs.org/en/latest/
 
 .. _QiPr: https://github.com/ohsu-qin/qiprofile
