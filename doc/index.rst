@@ -8,7 +8,7 @@ Synopsis
 The Quantitative Imaging Profile REST server serves data for the
 Quantitative Imaging Profile (QiPr_) web application.
 
-:API: https://qirest.readthedocs.org/en/latest/api/index.html
+:API: https://qiprofile-rest.readthedocs.org/en/latest/api/index.html
 
 :Git: https://github.com/ohsu-qin/qirest
 
