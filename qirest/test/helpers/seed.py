@@ -713,6 +713,14 @@ def _create_session(builder, subject, session_number):
     """
     # Stagger the inter-session duration.
     date = _create_session_date(subject, session_number)
+
+    # The tumor extent shrinks over time.
+    delta = min(session_number, 4);
+    length = _random_int(10, 50 - (delta * 5))
+    width = _random_int(5, 30 - (delta * 3))
+    depth = _random_int(2, 20 - (delta * 2))
+    extent = TumorExtent(length=length, width=width, depth=depth)
+
     # Make the session detail.
     detail = _create_session_detail(builder, subject, session_number)
     # Save the detail first, since it is not embedded and we need to
@@ -721,7 +729,8 @@ def _create_session(builder, subject, session_number):
     # The embedded session modeling objects.
     modelings = _create_modeling(subject, session_number)
 
-    return Session(date=date, modelings=[modelings], detail=detail)
+    return Session(date=date, modelings=[modelings],
+                   tumor_extents=[extent], detail=detail)
 
 
 def _create_session_detail(builder, subject, session_number):
@@ -798,7 +807,9 @@ SESSION_OFFSET_RANGES = dict(
     Breast=[(0, 5), (10, 15), (25, 30), (50,60)],
     Sarcoma=[(0, 5), (10, 20), (40,50)]
 )
-"""The range of offsets from the initial date for the breast scan dates. """
+"""
+The range of offsets from the initial date for the breast scan dates.
+"""
 
 
 def _create_session_date(subject, session_number):
