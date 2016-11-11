@@ -61,7 +61,7 @@ Development
 ***********
 
 The project is cloned, tested, documented and released as described in
-the `qipipe`_ documentation Development section.
+the `qipipe`_ documentation Development section[#rtd_requirements].
 
 A sample database can be created by running the following command in
 the local ``qirest`` project directory::
@@ -70,8 +70,19 @@ the local ``qirest`` project directory::
 
 ---------
 
-.. container:: copyright
+.. rubric:: Footnotes
 
+.. [#rtd_requirements]
+  Note that the Read The Docs `qirest` project requirements file must be
+    set to `requirements_read_the_docs.txt`. This alternative requirements
+    file is a subset of the `requirements.txt` suitable only for documentation
+    generation. Specifically, the alternative file works around the following
+    problem:
+
+    * A Read The Docs build with `requirements.txt` fails on pymongo because
+    of an over-zealous Eve dependency constraint.
+
+.. container:: copyright
 
 .. Targets:
 
