@@ -1,6 +1,13 @@
 import os
 import sys
-import qirest
+try:
+    import qirest
+except ImportError:
+    # A ReadTheDocs build does not install qirest. In that case,
+    # load the module directly.
+    src_dir = os.path.join(os.path.dirname(__file__), '..')
+    sys.path.append(src_dir)
+    import qirest
 
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.intersphinx', 'sphinx.ext.todo']
 autoclass_content = "both"
