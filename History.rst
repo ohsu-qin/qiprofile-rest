@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+6.2.8 / 2016-11-10
+------------------
+Fix API link.
+
 6.2.7 / 2016-11-10
 ------------------
 Use alternate import for RTD.
