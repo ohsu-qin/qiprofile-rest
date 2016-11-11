@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+6.2.6 / 2016-11-10
+------------------
+* Move the RTD requirements file comment to the doc.
+
 6.2.5 / 2016-11-10
 ------------------
 * Bias the test seed tumor extent to shrink over time.
