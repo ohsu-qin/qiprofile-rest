@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+6.2.9 / 2016-11-15
+------------------
+Add more seed ER-positive/lymph-negative patients.
+
 6.2.8 / 2016-11-10
 ------------------
 Fix API link.

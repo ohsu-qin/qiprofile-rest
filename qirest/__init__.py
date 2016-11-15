@@ -1,6 +1,6 @@
 """The Quantitative Imaging Profile (*QiPr*) REST server."""
 
-__version__ = '6.2.8'
+__version__ = '6.2.9'
 """
 The one-based major.minor.patch version. Minor and patch
 version numbers begin at 1.
