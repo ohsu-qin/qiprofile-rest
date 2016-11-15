@@ -631,7 +631,7 @@ def _add_mock_clinical(subject):
     # Force the first breast patient to be free of lymph nodes,
     # since we want at least one patient with a normalized assay.
     opts = {}
-    if isinstance(builder, Breast) and subject.number == 1:
+    if isinstance(builder, Breast) and subject.number % 5 == 1:
         opts['hormone_receptors'] = dict(estrogen=dict(positive=True))
         opts['tnm'] = dict(lymph_status=0)
     # The biopsy has a pathology report.
