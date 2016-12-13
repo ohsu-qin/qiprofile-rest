@@ -573,10 +573,16 @@ def _add_mock_clinical(subject):
     # The patient demographics.
     yr = _random_int(1950, 1980)
     subject.birth_date = datetime(yr, 7, 7, tzinfo=pytz.utc)
-    # Only show one race.
-    subject.races = [_choose_race()]
+    # Show one race 80% of the time, two races 20% of the time.
+    race = _choose_race()
+    subject.races = [race]
+    if _random_int(1, 5) == 5:
+        race = other = subject.races[0]
+        while (race == other):
+            other = _choose_race();
+        subject.races.append(other)
     # The ethnicity is None half of the time.
-    subject.ethnicity = _choose_ethnicity()
+    subject.ethnicity = _choose_ethnicity(race)
     # The gender is roughly split.
     subject.gender = builder.choose_gender()
     # The diagnosis is 2-6 weeks prior to the first visit.
@@ -680,7 +686,14 @@ def _choose_race():
             return Subject.RACE_CHOICES[i][0]
 
 
-def _choose_ethnicity():
+def _choose_ethnicity(race):
+    # It is rare, but possible, that an American Indian or
+    # Pacific Islander is Hispanic. With the guard below,
+    # this can only occur if a patient has a White or Black
+    # primary race and an American Indian or Pacific Islander
+    # secondary race.
+    if not race in ['White', 'Black']:
+        return 'Non-Hispanic'
     offset = _random_int(0, 99)
     n = 0
     for i, proportion in enumerate(ETHNICITY_INCIDENCE):
