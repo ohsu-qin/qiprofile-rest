@@ -4,4 +4,4 @@ Eve-Mongoengine~=0.0.9
 pytz~=2015.7
 pymongo~=2.9.3
 qiutil~=2.2.12
-qirest-client~=6.2.2
+qirest-client~=6.2.3
