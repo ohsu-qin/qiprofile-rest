@@ -1,6 +1,10 @@
 This history lists major release themes. See the GitHub commits
 for change details.
 
+6.2.11 / 2016-12-16
+------------------
+* Add session preview to seed database.
+
 6.2.10 / 2016-12-13
 ------------------
 Seed 20% dual races.
