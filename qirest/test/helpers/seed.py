@@ -703,6 +703,13 @@ def _choose_ethnicity(race):
             # the second is the display value.
             return Subject.ETHNICITY_CHOICES[i][0]
 
+PREVIEW_RESOUCE_NAME = 'preview'
+"""
+The preview resource is a child of the session.
+"""
+
+PREVIEW_FILE_NAME = 'volume15.png'
+"""The sole preview image file is for volume 15."""
 
 FXL_K_TRANS_FILE_NAME = 'fxl_k_trans.nii.gz'
 
@@ -734,6 +741,12 @@ def _create_session(builder, subject, session_number):
     depth = _random_int(2, 20 - (delta * 2))
     extent = TumorExtent(length=length, width=width, depth=depth)
 
+    # The scan preview graphical display image.
+    preview = SingleImageResource(
+        name=PREVIEW_RESOUCE_NAME,
+        image=Image(name=PREVIEW_FILE_NAME)
+    )
+
     # Make the session detail.
     detail = _create_session_detail(builder, subject, session_number)
     # Save the detail first, since it is not embedded and we need to
@@ -743,7 +756,8 @@ def _create_session(builder, subject, session_number):
     modelings = _create_modeling(subject, session_number)
 
     return Session(date=date, modelings=[modelings],
-                   tumor_extents=[extent], detail=detail)
+                   preview=preview, tumor_extents=[extent],
+                   detail=detail)
 
 
 def _create_session_detail(builder, subject, session_number):
