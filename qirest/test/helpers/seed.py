@@ -854,9 +854,27 @@ def _create_t1_scan(builder, subject, session_number, bolus_arrival_index):
     intensities = _create_intensities(vol_cnt, bolus_arrival_index)
     # Add a motion artifact.
     _add_motion_artifact(intensities)
+
+    # The common scan parameters contain only the voxel dimensions
+    # and a few simple settings for test purposes. In practice,
+    # the pipeline will get the time series embedded metadata
+    # DICOM tags using img.meta_ext.get_keys() and filtering for
+    # keys without a '.' and values which are either not a list
+    # or a list with no more than two items, which will pick up
+    # the pixel spacing. See qipipe for details.
+    acquisition_parameters = dict(
+        EchoTime=2.0,
+        RepetitionTime=5.0,
+        PixelSpacing=[1.0, 1.0],
+        SliceThickness=3.0
+    )
+    # The metadata includes the volume-specific average intensity.
+    metadata_dicts = [
+        _merge_dicts(acquisition_parameters, average_intensity=intensities[i])
+        for i in range(vol_cnt)
+    ]
     # Make the volume images.
-    scan_images = [Image(name=filenames[i],
-                         metadata=dict(average_intensity=intensities[i]))
+    scan_images = [Image(name=filenames[i], metadata=metadata_dicts[i])
                    for i in range(vol_cnt)]
     volumes = MultiImageResource(name='NIFTI', images=scan_images)
 
@@ -871,6 +889,18 @@ def _create_t1_scan(builder, subject, session_number, bolus_arrival_index):
     return Scan(number=1, protocol=PROTOCOLS.t1, volumes=volumes,
                 time_series=time_series, registrations=[reg],
                 bolus_arrival_index=bolus_arrival_index)
+
+
+def _merge_dicts(*dicts, **opts):
+    """
+    The standard dictionary merge idiom, with a twist: an *opts*
+    keyword dictionary.
+    """
+    target = opts
+    for d in dicts:
+        target.update(d)
+
+    return target
 
 
 def _create_t2_scan(subject, session_number):
