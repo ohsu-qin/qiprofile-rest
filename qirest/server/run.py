@@ -4,11 +4,9 @@ import mongoengine
 from eve import Eve
 from eve_mongoengine import EveMongoengine
 from qirest_client.model.subject import (Project, ImagingCollection, Subject)
-from qirest_client.model.imaging import (SessionDetail, Scan, ScanProtocol,
-                                          RegistrationProtocol,
-                                          ModelingProtocol)
+from qirest_client.model.imaging import (SessionDetail, Scan, Protocol)
 
-# The application. 
+# The application.
 app = Eve()
 
 # The MongoEngine ORM extension.
@@ -19,9 +17,7 @@ ext.add_model(Project, url='project')
 ext.add_model(ImagingCollection, url='imaging-collection')
 ext.add_model(Subject, url='subject')
 ext.add_model(SessionDetail, url='session-detail')
-ext.add_model(ScanProtocol, url='scan-protocol')
-ext.add_model(RegistrationProtocol, url='registration-protocol')
-ext.add_model(ModelingProtocol, url='modeling-protocol')
+ext.add_model(Protocol, url='protocol')
 
 
 if __name__ == '__main__':

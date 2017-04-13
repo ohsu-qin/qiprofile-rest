@@ -15,9 +15,8 @@ from qiutil.file import splitexts
 from qirest_client.helpers import database
 from qirest_client.model.subject import (Project, ImagingCollection, Subject)
 from qirest_client.model.imaging import (
-  Session, SessionDetail, Modeling, ModelingProtocol, Scan, ScanProtocol,
-  Registration, RegistrationProtocol, LabelMap, Image, MultiImageResource,
-  SingleImageResource
+  Session, SessionDetail, Modeling, Scan, Registration, Protocol,
+  LabelMap, Image, MultiImageResource, SingleImageResource
 )
 from qirest_client.model.common import TumorExtent
 from qirest_client.model.clinical import (
@@ -528,15 +527,15 @@ def _create_protocols():
     """Returns the protocols described in :const:`PROTOCOLS`."""
     # The modeling protocol.
     mdl_key = dict(technique='BOLERO', configuration=dict(r1=R1_PARAMS))
-    bolero = database.get_or_create(ModelingProtocol, mdl_key)
+    bolero = database.get_or_create(Protocol, mdl_key)
     # The T1 scan protocol.
-    t1 = database.get_or_create(ScanProtocol, dict(technique='T1'))
+    t1 = database.get_or_create(Protocol, dict(technique='T1'))
     # The T2 scan protocol.
-    t2 = database.get_or_create(ScanProtocol, dict(technique='T2'))
+    t2 = database.get_or_create(Protocol, dict(technique='T2'))
     # The registration protocol.
     ants_cfg = {'Registration': REG_PARAMS}
     ants_key = dict(technique='ANTs', configuration=ants_cfg)
-    ants = database.get_or_create(RegistrationProtocol, ants_key)
+    ants = database.get_or_create(Protocol, ants_key)
 
     return dict(t1=t1, t2=t2, bolero=bolero, ants=ants)
 
@@ -604,12 +603,12 @@ def _add_mock_clinical(subject):
         trast = Drug(name='trastuzumab')
         trast_amt = _random_float(20, 30)
         trast_dosage = Dosage(agent=trast, start_date=neo_rx_begin,
-                              duration=14, amount=trast_amt)
+                              duration=84, amount=trast_amt)
         # pertuzumab.
         pert = Drug(name='pertuzumab')
         pert_amt = _random_float(40, 50)
         pert_dosage = Dosage(agent=pert, start_date=neo_rx_begin,
-                             duration=14, amount=pert_amt)
+                             duration=84, amount=pert_amt)
         neo_rx.dosages = [trast_dosage, pert_dosage]
 
     # The primary treatment (surgery) is a few days after the last scan.
